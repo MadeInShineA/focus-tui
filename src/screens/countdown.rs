@@ -90,7 +90,7 @@ impl Screen for CountdownScreen {
         let work_duration_paragraph: Paragraph = Paragraph::new(work_duration_text).centered();
 
         let controls_text: Text =
-            Text::styled("Controls: Space to pause", Style::default()).centered();
+            Text::styled("Controls: Space to pause, Q to quit", Style::default()).centered();
         let controls_paragraph: Paragraph = Paragraph::new(controls_text).centered();
 
         let vertical_layout = Layout::default()

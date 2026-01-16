@@ -92,7 +92,7 @@ impl Screen for WelcomeScreen {
         let break_duration_paragraph: Paragraph = Paragraph::new(break_duration_text).centered();
 
         let controls_text: Text = Text::styled(
-            "Controls: Tab/Up/Down to select duration, Left/Right to change value, Enter to start",
+            "Controls: Tab/Up/Down to select duration, Left/Right to change value, Enter to start, Q to quit",
             Style::default(),
         )
         .centered();

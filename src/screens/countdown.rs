@@ -1,7 +1,4 @@
-use std::{
-    fmt::format,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use crate::app::{Action, Screen};
 use ratatui::{

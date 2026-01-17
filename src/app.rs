@@ -54,7 +54,8 @@ impl App {
     fn draw(&self, frame: &mut Frame) {
         let block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::White));
+            .border_style(Style::default().fg(Color::White))
+            .style(Style::default().bg(Color::Rgb(30, 30, 46)));
         frame.render_widget(block.clone(), frame.area());
         let inner_area = block.inner(frame.area());
         self.current_screen.draw(frame, inner_area);

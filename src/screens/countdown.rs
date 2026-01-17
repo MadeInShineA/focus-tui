@@ -5,9 +5,9 @@ use notify_rust::Notification;
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent},
     layout::{Constraint, Direction, Flex, Layout, Rect},
-    style::Style,
+    style::{Color, Style},
     text::Text,
-    widgets::{Block, Paragraph},
+    widgets::{Block, Gauge, Paragraph},
 };
 enum CountdownType {
     Work,
@@ -69,26 +69,50 @@ impl CountdownScreen {
             _ => {}
         }
     }
+
+    fn render_pause(&self, frame: &mut ratatui::Frame, area: Rect) {
+        let block = Block::bordered();
+        let popup_area = popup_area(area, 60, 20);
+        let inner_area = block.inner(popup_area);
+
+        let pause_text: Text =
+            Text::styled("The countdown is paused!", Style::default()).centered();
+        let pause_paragraph: Paragraph = Paragraph::new(pause_text).centered();
+
+        frame.render_widget(block, popup_area);
+        frame.render_widget(pause_paragraph, inner_area);
+    }
 }
 
 impl Screen for CountdownScreen {
     fn draw(&self, frame: &mut ratatui::Frame, area: Rect) {
-        let countdown_title: Text = Text::styled("Countdown screen!", Style::default()).centered();
-        let countdown_title_paragraph: Paragraph = Paragraph::new(countdown_title).centered();
+        let remaining_seconds: u64 = self.remaining_duration().as_secs();
+        let minutes: u64 = remaining_seconds / 60;
+        let seconds: u64 = remaining_seconds % 60;
 
-        let remaining_secs: u64 = self.remaining_duration().as_secs();
-        let minutes: u64 = remaining_secs / 60;
-        let seconds: u64 = remaining_secs % 60;
+        let progress_gauge_label: String = match self.countdown_type {
+            CountdownType::Work => format!("Work countdown: {:02}:{:02}", minutes, seconds),
+            CountdownType::Break => format!("Break countdown: {:02}:{:02}", minutes, seconds),
+        };
 
-        let work_duration_text: Text = Text::styled(
-            match self.countdown_type {
-                CountdownType::Work => format!("Work countdown: {:02}:{:02}", minutes, seconds),
-                CountdownType::Break => format!("Break countdown: {:02}:{:02}", minutes, seconds),
-            },
-            Style::default(),
-        )
-        .centered();
-        let work_duration_paragraph: Paragraph = Paragraph::new(work_duration_text).centered();
+        let progress_gauge_style: Style = match self.countdown_type {
+            CountdownType::Work => Style::new()
+                .fg(Color::Rgb(166, 227, 161))
+                .bg(Color::Rgb(30, 30, 46)),
+            CountdownType::Break => Style::new()
+                .fg(Color::Rgb(137, 180, 250))
+                .bg(Color::Rgb(30, 30, 46)),
+        };
+
+        let progress_gauge_percent: u16 =
+            ((self.total_duration.as_secs() - self.remaining_duration().as_secs()) * 100
+                / self.total_duration.as_secs()) as u16;
+
+        let progress_gauge: Gauge = Gauge::default()
+            .block(Block::bordered())
+            .label(progress_gauge_label)
+            .gauge_style(progress_gauge_style)
+            .percent(progress_gauge_percent);
 
         let controls_text: Text =
             Text::styled("Controls: Space to pause, Q to quit", Style::default()).centered();
@@ -106,23 +130,13 @@ impl Screen for CountdownScreen {
 
         let top_layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(1), Constraint::Length(1)])
+            .constraints([Constraint::Length(3)])
             .split(top_area);
 
-        frame.render_widget(countdown_title_paragraph, top_layout[0]);
-        frame.render_widget(work_duration_paragraph, top_layout[1]);
+        frame.render_widget(progress_gauge, top_layout[0]);
 
         if self.is_paused {
-            let block = Block::bordered();
-            let popup_area = popup_area(area, 60, 20);
-            let inner_area = block.inner(popup_area);
-
-            let pause_text: Text =
-                Text::styled("The countdown is paused!", Style::default()).centered();
-            let pause_paragraph: Paragraph = Paragraph::new(pause_text).centered();
-
-            frame.render_widget(block, popup_area);
-            frame.render_widget(pause_paragraph, inner_area);
+            self.render_pause(frame, area);
         }
     }
 

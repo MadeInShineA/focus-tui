@@ -23,14 +23,8 @@ pub trait Screen {
     fn update(&mut self);
 }
 
-// TODO: Use dyn ?
-enum CurrentScreen {
-    Welcome(WelcomeScreen),
-    Countdown(CountdownScreen),
-}
-
 pub struct App {
-    current_screen: CurrentScreen,
+    current_screen: Box<dyn Screen>,
     work_duration_minutes: u64,
     break_duration_minutes: u64,
     exit: bool,
@@ -39,7 +33,7 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         App {
-            current_screen: CurrentScreen::Welcome(WelcomeScreen::new()),
+            current_screen: Box::new(WelcomeScreen::new()),
             work_duration_minutes: 45,
             break_duration_minutes: 10,
             exit: false,
@@ -49,10 +43,7 @@ impl App {
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
-            match &mut self.current_screen {
-                CurrentScreen::Welcome(screen) => screen.update(),
-                CurrentScreen::Countdown(screen) => screen.update(),
-            }
+            self.current_screen.update();
             if poll(Duration::from_millis(10))? {
                 self.handle_event()?;
             }
@@ -66,10 +57,7 @@ impl App {
             .border_style(Style::default().fg(Color::White));
         frame.render_widget(block.clone(), frame.area());
         let inner_area = block.inner(frame.area());
-        match &self.current_screen {
-            CurrentScreen::Welcome(screen) => screen.draw(frame, inner_area),
-            CurrentScreen::Countdown(screen) => screen.draw(frame, inner_area),
-        }
+        self.current_screen.draw(frame, inner_area);
     }
 
     fn handle_event(&mut self) -> io::Result<()> {
@@ -78,14 +66,9 @@ impl App {
                 match key_event.code {
                     KeyCode::Char('q') => self.handle_action(Action::Quit),
                     _ => {
-                        if let Some(action) = match &mut self.current_screen {
-                            CurrentScreen::Welcome(screen) => {
-                                screen.handle_event(&Event::Key(key_event))
-                            }
-                            CurrentScreen::Countdown(screen) => {
-                                screen.handle_event(&Event::Key(key_event))
-                            }
-                        } {
+                        if let Some(action) =
+                            self.current_screen.handle_event(&Event::Key(key_event))
+                        {
                             self.handle_action(action);
                         }
                     }
@@ -106,10 +89,10 @@ impl App {
                 self.work_duration_minutes = work_duration_minutes;
                 self.break_duration_minutes = break_duration_minutes;
 
-                self.current_screen = CurrentScreen::Countdown(CountdownScreen::new(
+                self.current_screen = Box::new(CountdownScreen::new(
                     self.work_duration_minutes,
                     self.break_duration_minutes,
-                ))
+                ));
             }
         }
     }

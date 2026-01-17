@@ -5,10 +5,11 @@ use notify_rust::Notification;
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent},
     layout::{Constraint, Direction, Flex, Layout, Rect},
-    style::{Color, Style},
+    style::{Color, Style, Stylize},
     text::Text,
     widgets::{Block, Gauge, Paragraph},
 };
+use tui_big_text::{BigText, PixelSize};
 enum CountdownType {
     Work,
     Break,
@@ -91,8 +92,8 @@ impl Screen for CountdownScreen {
         let seconds: u64 = remaining_seconds % 60;
 
         let progress_gauge_label: String = match self.countdown_type {
-            CountdownType::Work => format!("Work countdown: {:02}:{:02}", minutes, seconds),
-            CountdownType::Break => format!("Break countdown: {:02}:{:02}", minutes, seconds),
+            CountdownType::Work => String::from("Work countdown"),
+            CountdownType::Break => String::from("Break countdown"),
         };
 
         let progress_gauge_style: Style = match self.countdown_type {
@@ -109,10 +110,25 @@ impl Screen for CountdownScreen {
                 / self.total_duration.as_secs()) as u16;
 
         let progress_gauge: Gauge = Gauge::default()
-            .block(Block::bordered())
+            .block(Block::bordered().title("Progress"))
             .label(progress_gauge_label)
             .gauge_style(progress_gauge_style)
             .percent(progress_gauge_percent);
+
+        let countdown_big_text_color: Color = match self.countdown_type {
+            CountdownType::Work => Color::Rgb(166, 227, 161),
+            CountdownType::Break => Color::Rgb(137, 180, 250),
+        };
+
+        let countdown_big_text: BigText = BigText::builder()
+            .pixel_size(PixelSize::Full)
+            .lines(vec![
+                format!("{:02}:{:02}", minutes, seconds)
+                    .fg(countdown_big_text_color)
+                    .into(),
+            ])
+            .centered()
+            .build();
 
         let controls_text: Text =
             Text::styled("Controls: Space to pause, Q to quit", Style::default()).centered();
@@ -130,10 +146,11 @@ impl Screen for CountdownScreen {
 
         let top_layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(3)])
+            .constraints([Constraint::Length(3), Constraint::Length(10)])
             .split(top_area);
 
         frame.render_widget(progress_gauge, top_layout[0]);
+        frame.render_widget(countdown_big_text, top_layout[1]);
 
         if self.is_paused {
             self.render_pause(frame, area);

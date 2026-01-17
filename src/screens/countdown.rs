@@ -87,10 +87,6 @@ impl CountdownScreen {
 
 impl Screen for CountdownScreen {
     fn draw(&self, frame: &mut ratatui::Frame, area: Rect) {
-        let remaining_seconds: u64 = self.remaining_duration().as_secs();
-        let minutes: u64 = remaining_seconds / 60;
-        let seconds: u64 = remaining_seconds % 60;
-
         let progress_gauge_label: String = match self.countdown_type {
             CountdownType::Work => String::from("Work countdown"),
             CountdownType::Break => String::from("Break countdown"),
@@ -110,7 +106,7 @@ impl Screen for CountdownScreen {
                 / self.total_duration.as_secs()) as u16;
 
         let progress_gauge: Gauge = Gauge::default()
-            .block(Block::bordered().title("Progress"))
+            .block(Block::bordered())
             .label(progress_gauge_label)
             .gauge_style(progress_gauge_style)
             .percent(progress_gauge_percent);
@@ -120,10 +116,15 @@ impl Screen for CountdownScreen {
             CountdownType::Break => Color::Rgb(137, 180, 250),
         };
 
+        let remaining_seconds: u64 = self.remaining_duration().as_secs();
+        let hours: u64 = remaining_seconds / 3600;
+        let minutes: u64 = remaining_seconds / 60 % 60;
+        let seconds: u64 = remaining_seconds % 60;
+
         let countdown_big_text: BigText = BigText::builder()
             .pixel_size(PixelSize::Full)
             .lines(vec![
-                format!("{:02}:{:02}", minutes, seconds)
+                format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
                     .fg(countdown_big_text_color)
                     .into(),
             ])
@@ -146,7 +147,7 @@ impl Screen for CountdownScreen {
 
         let top_layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(3), Constraint::Length(10)])
+            .constraints([Constraint::Length(3), Constraint::Fill(1)])
             .split(top_area);
 
         frame.render_widget(progress_gauge, top_layout[0]);

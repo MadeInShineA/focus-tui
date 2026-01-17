@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
 use crate::app::{Action, Screen};
+use notify_rust::Notification;
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent},
     layout::{Constraint, Direction, Flex, Layout, Rect},
@@ -147,6 +148,21 @@ impl Screen for CountdownScreen {
                 CountdownType::Work => self.work_duration,
                 CountdownType::Break => self.break_duration,
             };
+
+            let notification = match self.countdown_type {
+                CountdownType::Work => Notification::new()
+                    .summary("Work time started")
+                    .body("The work countdown has started, please focus!")
+                    .finalize(),
+                CountdownType::Break => Notification::new()
+                    .summary("Break time started")
+                    .body("The break countdown has started, please take some time to relax!")
+                    .finalize(),
+            };
+
+            if let Err(e) = notification.show() {
+                eprintln!("Failed to show notification: {}", e);
+            }
 
             self.start_time = Instant::now();
             self.remaining_time_when_paused = None;

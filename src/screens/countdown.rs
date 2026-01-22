@@ -1,8 +1,10 @@
 use std::time::{Duration, Instant};
 
 use crate::app::{Action, Screen};
-use crate::utils::popup_area;
+use crate::theme::Theme;
+use crate::utils::{CountdownType, popup_area};
 use notify_rust::Notification;
+use ratatui::widgets::Clear;
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent},
     layout::{Constraint, Direction, Layout, Rect},
@@ -11,10 +13,6 @@ use ratatui::{
     widgets::{Block, Gauge, Paragraph},
 };
 use tui_big_text::{BigText, PixelSize};
-enum CountdownType {
-    Work,
-    Break,
-}
 
 pub struct CountdownScreen {
     start_time: Instant,
@@ -72,13 +70,16 @@ impl CountdownScreen {
         }
     }
 
-    fn render_pause(&self, frame: &mut ratatui::Frame, area: Rect) {
-        let block = Block::bordered();
+    fn render_pause(&self, frame: &mut ratatui::Frame, area: Rect, theme: &Theme) {
+        let block = Block::bordered()
+            .border_style(theme.border_style)
+            .style(theme.background_style);
         let popup_area = popup_area(area, 60, 20);
+        frame.render_widget(Clear, popup_area);
         let inner_area = block.inner(popup_area);
 
         let pause_text: Text =
-            Text::styled("The countdown is paused!", Style::default()).centered();
+            Text::styled("The countdown is paused!", theme.text_style()).centered();
         let pause_paragraph: Paragraph = Paragraph::new(pause_text).centered();
 
         frame.render_widget(block, popup_area);
@@ -87,35 +88,25 @@ impl CountdownScreen {
 }
 
 impl Screen for CountdownScreen {
-    fn draw(&self, frame: &mut ratatui::Frame, area: Rect) {
+    fn draw(&self, frame: &mut ratatui::Frame, area: Rect, theme: &Theme) {
         let progress_gauge_label: String = match self.countdown_type {
             CountdownType::Work => String::from("Work countdown"),
             CountdownType::Break => String::from("Break countdown"),
         };
 
-        let progress_gauge_style: Style = match self.countdown_type {
-            CountdownType::Work => Style::new()
-                .fg(Color::Rgb(166, 227, 161))
-                .bg(Color::Rgb(30, 30, 46)),
-            CountdownType::Break => Style::new()
-                .fg(Color::Rgb(137, 180, 250))
-                .bg(Color::Rgb(30, 30, 46)),
-        };
+        let progress_gauge_style: Style = theme.gauge_style(&self.countdown_type);
 
         let progress_gauge_percent: u16 =
             ((self.total_duration.as_secs() - self.remaining_duration().as_secs()) * 100
                 / self.total_duration.as_secs()) as u16;
 
         let progress_gauge: Gauge = Gauge::default()
-            .block(Block::bordered())
+            .block(Block::bordered().border_style(theme.border_style))
             .label(progress_gauge_label)
             .gauge_style(progress_gauge_style)
             .percent(progress_gauge_percent);
 
-        let countdown_big_text_color: Color = match self.countdown_type {
-            CountdownType::Work => Color::Rgb(166, 227, 161),
-            CountdownType::Break => Color::Rgb(137, 180, 250),
-        };
+        let countdown_big_text_color: Color = theme.countdown_color(&self.countdown_type);
 
         let remaining_seconds: u64 = self.remaining_duration().as_secs();
         let hours: u64 = remaining_seconds / 3600;
@@ -133,7 +124,7 @@ impl Screen for CountdownScreen {
             .build();
 
         let controls_text: Text =
-            Text::styled("Controls: Space to pause, Q to quit", Style::default()).centered();
+            Text::styled("Controls: Space to pause, Q to quit", theme.text_style()).centered();
         let controls_paragraph: Paragraph = Paragraph::new(controls_text).centered();
 
         let vertical_layout = Layout::default()
@@ -155,7 +146,7 @@ impl Screen for CountdownScreen {
         frame.render_widget(countdown_big_text, top_layout[1]);
 
         if self.is_paused {
-            self.render_pause(frame, area);
+            self.render_pause(frame, area, theme);
         }
     }
 

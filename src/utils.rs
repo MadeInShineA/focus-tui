@@ -8,3 +8,11 @@ pub fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
     let [area] = horizontal.areas(area);
     area
 }
+
+pub enum CountdownType {
+    Work,
+    Break,
+}
+
+pub const DEFAULT_WORK_DURATION_MINUTES: u64 = 45;
+pub const DEFAULT_BREAK_DURATION_MINUTES: u64 = 10;

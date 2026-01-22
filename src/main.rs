@@ -1,6 +1,7 @@
 mod app;
 mod popups;
 mod screens;
+mod theme;
 mod utils;
 use app::App;
 use std::io;

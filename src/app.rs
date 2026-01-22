@@ -4,12 +4,14 @@ use ratatui::{
     DefaultTerminal, Frame,
     crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
     layout::Rect,
-    style::{Color, Style},
     widgets::{Block, Borders},
 };
 
-use crate::popups::task_list::TaskListPopup;
-use crate::screens::{countdown::CountdownScreen, welcome::WelcomeScreen};
+use crate::{popups::task_list::TaskListPopup, theme::Theme};
+use crate::{
+    screens::{countdown::CountdownScreen, welcome::WelcomeScreen},
+    utils::{DEFAULT_BREAK_DURATION_MINUTES, DEFAULT_WORK_DURATION_MINUTES},
+};
 
 pub enum Action {
     Quit,
@@ -18,20 +20,22 @@ pub enum Action {
         break_duration_minutes: u64,
     },
 }
+
 pub trait Screen {
-    fn draw(&self, frame: &mut Frame, area: Rect);
+    fn draw(&self, frame: &mut Frame, area: Rect, theme: &Theme);
     fn handle_event(&mut self, event: &Event) -> Option<Action>;
     fn update(&mut self);
 }
 
 pub trait Popup {
-    fn draw(&mut self, frame: &mut Frame, area: Rect);
+    fn draw(&mut self, frame: &mut Frame, area: Rect, theme: &Theme);
     fn handle_event(&mut self, event: &Event) -> Option<Action>;
 }
 
 pub struct App {
     current_screen: Box<dyn Screen>,
     current_popup: Option<Box<dyn Popup>>,
+    theme: Theme,
     work_duration_minutes: u64,
     break_duration_minutes: u64,
     exit: bool,
@@ -42,8 +46,9 @@ impl App {
         App {
             current_screen: Box::new(WelcomeScreen::new()),
             current_popup: None,
-            work_duration_minutes: 45,
-            break_duration_minutes: 10,
+            theme: Theme::catppuccin_mocha(),
+            work_duration_minutes: DEFAULT_WORK_DURATION_MINUTES,
+            break_duration_minutes: DEFAULT_BREAK_DURATION_MINUTES,
             exit: false,
         }
     }
@@ -62,14 +67,14 @@ impl App {
     fn draw(&mut self, frame: &mut Frame) {
         let block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::White))
-            .style(Style::default().bg(Color::Rgb(30, 30, 46)));
+            .border_style(self.theme.border_style)
+            .style(self.theme.background_style);
         frame.render_widget(block.clone(), frame.area());
         let inner_area = block.inner(frame.area());
+        self.current_screen.draw(frame, inner_area, &self.theme);
         if let Some(current_popup) = &mut self.current_popup {
-            current_popup.draw(frame, inner_area);
+            current_popup.draw(frame, inner_area, &self.theme);
         }
-        self.current_screen.draw(frame, inner_area);
     }
 
     fn handle_event(&mut self) -> io::Result<()> {

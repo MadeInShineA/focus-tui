@@ -3,6 +3,7 @@ use ratatui::{Frame, crossterm::event::Event, layout::Rect};
 use crate::{
     app::{Action, Popup},
     popups::task_list::TaskStatus,
+    theme::Theme,
 };
 
 pub struct AddTaskPopup {
@@ -11,7 +12,7 @@ pub struct AddTaskPopup {
 }
 
 impl Popup for AddTaskPopup {
-    fn draw(&mut self, frame: &mut Frame, area: Rect) {
+    fn draw(&mut self, frame: &mut Frame, area: Rect, theme: &Theme) {
         todo!()
     }
 
@@ -19,4 +20,3 @@ impl Popup for AddTaskPopup {
         todo!()
     }
 }
-

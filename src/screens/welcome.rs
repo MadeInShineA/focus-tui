@@ -6,7 +6,11 @@ use ratatui::{
     widgets::Paragraph,
 };
 
-use crate::app::{Action, Screen};
+use crate::{
+    app::{Action, Screen},
+    theme::Theme,
+    utils::{DEFAULT_BREAK_DURATION_MINUTES, DEFAULT_WORK_DURATION_MINUTES},
+};
 
 enum SelectedDuration {
     Work,
@@ -22,8 +26,8 @@ pub struct WelcomeScreen {
 impl WelcomeScreen {
     pub fn new() -> Self {
         WelcomeScreen {
-            work_duration_minutes: 45,
-            break_duration_minutes: 10,
+            work_duration_minutes: DEFAULT_WORK_DURATION_MINUTES,
+            break_duration_minutes: DEFAULT_BREAK_DURATION_MINUTES,
             selected_duration: SelectedDuration::Work,
         }
     }
@@ -63,14 +67,15 @@ impl WelcomeScreen {
 }
 
 impl Screen for WelcomeScreen {
-    fn draw(&self, frame: &mut ratatui::Frame, area: Rect) {
-        let welcome_text: Text = Text::styled("Welcome to Focus Tui!", Style::default()).centered();
+    fn draw(&self, frame: &mut ratatui::Frame, area: Rect, theme: &Theme) {
+        let welcome_text: Text =
+            Text::styled("Welcome to Focus Tui!", theme.text_style()).centered();
         let welcome_paragraph: Paragraph = Paragraph::new(welcome_text).centered();
 
         let work_style: Style = if matches!(self.selected_duration, SelectedDuration::Work) {
-            Style::default().add_modifier(Modifier::BOLD)
+            theme.text_style().add_modifier(Modifier::BOLD)
         } else {
-            Style::default()
+            theme.text_style()
         };
         let work_duration_text: Text = Text::styled(
             format!("Work duration: {} min", self.work_duration_minutes),
@@ -80,9 +85,9 @@ impl Screen for WelcomeScreen {
         let work_duration_paragraph: Paragraph = Paragraph::new(work_duration_text).centered();
 
         let break_style: Style = if matches!(self.selected_duration, SelectedDuration::Break) {
-            Style::default().add_modifier(Modifier::BOLD)
+            theme.text_style().add_modifier(Modifier::BOLD)
         } else {
-            Style::default()
+            theme.text_style()
         };
         let break_duration_text: Text = Text::styled(
             format!("Break duration: {} min", self.break_duration_minutes),
@@ -93,7 +98,7 @@ impl Screen for WelcomeScreen {
 
         let controls_text: Text = Text::styled(
             "Controls: Tab/Up/Down to select duration, Left/Right to change value, Enter to start, Q to quit",
-            Style::default(),
+            theme.text_style(),
         )
         .centered();
         let controls_paragraph: Paragraph = Paragraph::new(controls_text).centered();

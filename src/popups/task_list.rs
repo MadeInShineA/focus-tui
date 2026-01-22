@@ -3,13 +3,14 @@ use std::fmt::Display;
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent},
     layout::{Constraint, Layout, Rect},
-    style::Style,
+    style::{Color, Style},
     text::Text,
-    widgets::{Block, List, ListItem, ListState, Paragraph},
+    widgets::{Block, Clear, List, ListItem, ListState, Paragraph},
 };
 
 use crate::{
     app::{Action, Popup},
+    theme::Theme,
     utils::popup_area,
 };
 
@@ -95,25 +96,29 @@ impl TaskListPopup {
 }
 
 impl Popup for TaskListPopup {
-    fn draw(&mut self, frame: &mut ratatui::Frame, area: ratatui::prelude::Rect) {
-        let block = Block::bordered();
+    fn draw(&mut self, frame: &mut ratatui::Frame, area: ratatui::prelude::Rect, theme: &Theme) {
+        let block = Block::bordered()
+            .border_style(theme.border_style)
+            .style(theme.background_style);
+
         let popup_area: Rect = popup_area(area, 60, 60);
+        frame.render_widget(Clear, popup_area);
         let inner_area: Rect = block.inner(popup_area);
         let inner_layout = Layout::default()
             .direction(ratatui::layout::Direction::Vertical)
             .constraints(vec![Constraint::Length(1), Constraint::Fill(1)])
             .split(inner_area);
 
-        let title_text: Text = Text::styled("Task list popup", Style::default()).centered();
+        let title_text: Text = Text::styled("Task list popup", theme.text_style()).centered();
         let title_paragraphe: Paragraph = Paragraph::new(title_text).centered();
 
         let task_list: List = List::new(
             self.tasks
                 .iter()
-                .map(|task| task.get_list_item())
+                .map(|task| task.get_list_item().style(theme.text_style()))
                 .collect::<Vec<ListItem>>(),
         )
-        .highlight_style(Style::default().bold())
+        .highlight_style(Style::default().fg(theme.text_color).bold())
         .highlight_symbol(">>");
 
         frame.render_widget(block, popup_area);

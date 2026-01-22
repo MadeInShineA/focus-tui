@@ -3,13 +3,14 @@ use std::fmt::Display;
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent},
     layout::{Constraint, Layout, Rect},
-    style::{Color, Style},
+    style::Style,
     text::Text,
     widgets::{Block, Clear, List, ListItem, ListState, Paragraph},
 };
 
 use crate::{
     app::{Action, Popup},
+    popups::add_task::AddTaskPopup,
     theme::Theme,
     utils::popup_area,
 };
@@ -19,6 +20,24 @@ pub enum TaskStatus {
     Done,
     Ongoing,
     Todo,
+}
+
+impl TaskStatus {
+    pub fn next(&self) -> TaskStatus {
+        match self {
+            TaskStatus::Done => TaskStatus::Ongoing,
+            TaskStatus::Ongoing => TaskStatus::Todo,
+            TaskStatus::Todo => TaskStatus::Done,
+        }
+    }
+
+    pub fn previous(&self) -> TaskStatus {
+        match self {
+            TaskStatus::Done => TaskStatus::Todo,
+            TaskStatus::Ongoing => TaskStatus::Done,
+            TaskStatus::Todo => TaskStatus::Ongoing,
+        }
+    }
 }
 
 impl Display for TaskStatus {
@@ -33,8 +52,8 @@ impl Display for TaskStatus {
 
 #[derive(Clone)]
 pub struct Task {
-    title: String,
-    status: TaskStatus,
+    pub title: String,
+    pub status: TaskStatus,
 }
 
 impl Task {
@@ -65,12 +84,16 @@ impl TaskListPopup {
         }
     }
 
-    fn handle_key_event(&mut self, key_event: &KeyEvent) {
+    fn handle_key_event(&mut self, key_event: &KeyEvent) -> Option<Action> {
         match key_event.code {
+            KeyCode::Char('t') => return Some(Action::ClosePopup),
             KeyCode::Char('a') => {
-                self.add_task(String::from("Test"), TaskStatus::Done);
-                let selected_index: usize = self.tasks.len() - 1;
-                self.list_state.select(Some(selected_index));
+                // self.add_task(String::from("Test"), TaskStatus::Done);
+                // let selected_index: usize = self.tasks.len() - 1;
+                // self.list_state.select(Some(selected_index));
+                return Some(Action::OpenPopup {
+                    popup: Box::new(AddTaskPopup::new()),
+                });
             }
             KeyCode::Up => {
                 if let Some(selected_index) = &self.list_state.selected() {
@@ -87,6 +110,7 @@ impl TaskListPopup {
             }
             _ => {}
         }
+        return None;
     }
 
     fn add_task(&mut self, title: String, status: TaskStatus) {
@@ -128,10 +152,7 @@ impl Popup for TaskListPopup {
 
     fn handle_event(&mut self, event: &Event) -> Option<Action> {
         match event {
-            Event::Key(key_event) => {
-                self.handle_key_event(key_event);
-                None
-            }
+            Event::Key(key_event) => self.handle_key_event(key_event),
 
             _ => None,
         }

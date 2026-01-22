@@ -7,7 +7,10 @@ use ratatui::{
     widgets::{Block, Borders},
 };
 
-use crate::{popups::task_list::TaskListPopup, theme::Theme};
+use crate::{
+    popups::task_list::{Task, TaskListPopup},
+    theme::Theme,
+};
 use crate::{
     screens::{countdown::CountdownScreen, welcome::WelcomeScreen},
     utils::{DEFAULT_BREAK_DURATION_MINUTES, DEFAULT_WORK_DURATION_MINUTES},
@@ -19,6 +22,13 @@ pub enum Action {
         work_duration_minutes: u64,
         break_duration_minutes: u64,
     },
+    AddTask {
+        task: Task,
+    },
+    OpenPopup {
+        popup: Box<dyn Popup>,
+    },
+    ClosePopup,
 }
 
 pub trait Screen {
@@ -57,9 +67,7 @@ impl App {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.current_screen.update();
-            if poll(Duration::from_millis(10))? {
-                self.handle_event()?;
-            }
+            self.handle_event()?;
         }
         Ok(())
     }
@@ -82,10 +90,11 @@ impl App {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 match key_event.code {
                     KeyCode::Char('q') => self.handle_action(Action::Quit),
-                    KeyCode::Char('t') => match self.current_popup {
-                        None => self.current_popup = Some(Box::new(TaskListPopup::new())),
-                        _ => self.current_popup = None,
-                    },
+                    KeyCode::Char('t') if self.current_popup.is_none() => {
+                        self.handle_action(Action::OpenPopup {
+                            popup: Box::new(TaskListPopup::new()),
+                        })
+                    }
                     _ => {
                         if let Some(action) = {
                             if let Some(current_popup) = &mut self.current_popup {
@@ -119,6 +128,14 @@ impl App {
                     self.break_duration_minutes,
                 ));
             }
+            Action::AddTask { task } => {
+                // TODO: Add task properly
+                self.handle_action(Action::OpenPopup {
+                    popup: Box::new(TaskListPopup::from_iter(&[task])),
+                });
+            }
+            Action::OpenPopup { popup } => self.current_popup = Some(popup),
+            Action::ClosePopup => self.current_popup = None,
         }
     }
 }

@@ -1,10 +1,10 @@
 use std::{io, time::Duration};
 
 use ratatui::{
-    DefaultTerminal, Frame,
-    crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
+    crossterm::event::{self, poll, Event, KeyCode, KeyEventKind},
     layout::Rect,
     widgets::{Block, Borders},
+    DefaultTerminal, Frame,
 };
 
 use crate::{
@@ -67,7 +67,9 @@ impl App {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.current_screen.update();
-            self.handle_event()?;
+            if poll(Duration::from_millis(10))? {
+                self.handle_event()?;
+            }
         }
         Ok(())
     }

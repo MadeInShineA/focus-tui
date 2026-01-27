@@ -4,7 +4,7 @@ use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent},
     layout::{Constraint, Layout, Rect},
     style::Style,
-    text::Text,
+    text::{Line, Text},
     widgets::{Block, Clear, List, ListItem, ListState, Paragraph},
 };
 
@@ -38,6 +38,14 @@ impl TaskStatus {
             TaskStatus::Todo => TaskStatus::Ongoing,
         }
     }
+
+    pub fn emoji(&self) -> String {
+        match self {
+            TaskStatus::Done => String::from('✅'),
+            TaskStatus::Ongoing => String::from('⏳'),
+            TaskStatus::Todo => String::from('❌'),
+        }
+    }
 }
 
 impl Display for TaskStatus {
@@ -58,7 +66,9 @@ pub struct Task {
 
 impl Task {
     fn get_list_item<'a>(&self) -> ListItem<'a> {
-        ListItem::new(format!("{} {}", self.title, self.status))
+        let content: String = format!("{} {}", self.status.emoji(), self.title);
+        let line: Line = Line::from(content).centered();
+        ListItem::new(line)
     }
 }
 
@@ -88,9 +98,6 @@ impl TaskListPopup {
         match key_event.code {
             KeyCode::Char('t') => return Some(Action::ClosePopup),
             KeyCode::Char('a') => {
-                // self.add_task(String::from("Test"), TaskStatus::Done);
-                // let selected_index: usize = self.tasks.len() - 1;
-                // self.list_state.select(Some(selected_index));
                 return Some(Action::OpenPopup {
                     popup: Box::new(AddTaskPopup::new()),
                 });
@@ -110,7 +117,7 @@ impl TaskListPopup {
             }
             _ => {}
         }
-        return None;
+        None
     }
 
     fn add_task(&mut self, title: String, status: TaskStatus) {
@@ -142,8 +149,7 @@ impl Popup for TaskListPopup {
                 .map(|task| task.get_list_item().style(theme.text_style()))
                 .collect::<Vec<ListItem>>(),
         )
-        .highlight_style(Style::default().fg(theme.text_color).bold())
-        .highlight_symbol(">>");
+        .highlight_style(Style::default().fg(theme.text_color).bold());
 
         frame.render_widget(block, popup_area);
         frame.render_widget(title_paragraphe, inner_layout[0]);

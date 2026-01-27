@@ -1,10 +1,10 @@
 use std::{io, time::Duration};
 
 use ratatui::{
-    crossterm::event::{self, poll, Event, KeyCode, KeyEventKind},
+    DefaultTerminal, Frame,
+    crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
     layout::Rect,
     widgets::{Block, Borders},
-    DefaultTerminal, Frame,
 };
 
 use crate::{

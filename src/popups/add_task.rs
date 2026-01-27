@@ -45,7 +45,7 @@ impl AddTaskPopup {
                     status: self.current_status.clone(),
                 },
             }),
-            KeyCode::Tab => {
+            KeyCode::Tab | KeyCode::Left | KeyCode::Right => {
                 match self.selected_field {
                     SelectedField::Title => self.selected_field = SelectedField::Status,
                     SelectedField::Status => self.selected_field = SelectedField::Title,
@@ -86,7 +86,12 @@ impl Popup for AddTaskPopup {
         let inner_area: Rect = block.inner(popup_area);
         let inner_layout = Layout::default()
             .direction(ratatui::layout::Direction::Vertical)
-            .constraints(vec![Constraint::Length(1), Constraint::Fill(1)])
+            .constraints(vec![
+                Constraint::Length(1),
+                Constraint::Fill(1),
+                Constraint::Length(3),
+                Constraint::Fill(1),
+            ])
             .split(inner_area);
 
         let title_text: Text = Text::styled("Add task popup", theme.text_style()).centered();
@@ -98,7 +103,7 @@ impl Popup for AddTaskPopup {
             Constraint::Percentage(45),
             Constraint::Fill(1),
         ])
-        .split(inner_layout[1]);
+        .split(inner_layout[2]);
 
         let mut title_block = Block::default()
             .title("Title")
@@ -109,7 +114,7 @@ impl Popup for AddTaskPopup {
             .title_alignment(Alignment::Center)
             .borders(Borders::ALL);
 
-        let active_style = Style::default().bg(Color::LightYellow).fg(Color::Black);
+        let active_style = Style::default().reversed();
 
         match self.selected_field {
             SelectedField::Title => title_block = title_block.style(active_style),

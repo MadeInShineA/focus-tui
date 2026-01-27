@@ -1,6 +1,7 @@
 mod app;
 mod popups;
 mod screens;
+mod storage;
 mod theme;
 mod utils;
 use app::App;

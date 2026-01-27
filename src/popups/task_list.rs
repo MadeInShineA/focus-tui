@@ -7,6 +7,7 @@ use ratatui::{
     text::{Line, Text},
     widgets::{Block, Clear, List, ListItem, ListState, Paragraph},
 };
+use serde::{Deserialize, Serialize};
 
 use crate::{
     app::{Action, Popup},
@@ -15,7 +16,7 @@ use crate::{
     utils::popup_area,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum TaskStatus {
     Done,
     Ongoing,
@@ -58,7 +59,7 @@ impl Display for TaskStatus {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Task {
     pub title: String,
     pub status: TaskStatus,

@@ -1,4 +1,4 @@
-use std::{io, time::Duration};
+use std::{cell::RefCell, io, rc::Rc, time::Duration};
 
 use ratatui::{
     DefaultTerminal, Frame,
@@ -9,6 +9,7 @@ use ratatui::{
 
 use crate::{
     popups::task_list::{Task, TaskListPopup},
+    storage::TaskManager,
     theme::Theme,
 };
 use crate::{
@@ -25,6 +26,7 @@ pub enum Action {
     AddTask {
         task: Task,
     },
+
     OpenPopup {
         popup: Box<dyn Popup>,
     },
@@ -43,6 +45,7 @@ pub trait Popup {
 }
 
 pub struct App {
+    task_manager: Rc<RefCell<TaskManager>>,
     current_screen: Box<dyn Screen>,
     current_popup: Option<Box<dyn Popup>>,
     theme: Theme,
@@ -54,6 +57,8 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         App {
+            // TODO: Handle errors
+            task_manager: Rc::new(RefCell::new(TaskManager::new("./tasks.json").unwrap())),
             current_screen: Box::new(WelcomeScreen::new()),
             current_popup: None,
             theme: Theme::catppuccin_mocha(),
@@ -94,7 +99,10 @@ impl App {
                     KeyCode::Char('q') => self.handle_action(Action::Quit),
                     KeyCode::Char('t') if self.current_popup.is_none() => {
                         self.handle_action(Action::OpenPopup {
-                            popup: Box::new(TaskListPopup::new()),
+                            popup: Box::new(TaskListPopup::new(
+                                self.task_manager.clone(),
+                                0 as usize,
+                            )),
                         })
                     }
                     _ => {
@@ -131,9 +139,14 @@ impl App {
                 ));
             }
             Action::AddTask { task } => {
-                // TODO: Add task properly
+                // TODO: Handle errors
+                self.task_manager.borrow_mut().add_task(task).unwrap();
+                let added_task_idx: usize = self.task_manager.borrow().tasks.len();
                 self.handle_action(Action::OpenPopup {
-                    popup: Box::new(TaskListPopup::from_iter(&[task])),
+                    popup: Box::new(TaskListPopup::new(
+                        self.task_manager.clone(),
+                        added_task_idx,
+                    )),
                 });
             }
             Action::OpenPopup { popup } => self.current_popup = Some(popup),

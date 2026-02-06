@@ -6,6 +6,7 @@ use ratatui::{
     text::Text,
     widgets::{Block, Borders, Clear, Paragraph},
 };
+use uuid::Uuid;
 
 use crate::{
     app::{Action, Popup},
@@ -36,11 +37,13 @@ impl AddTaskPopup {
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> Option<Action> {
         match key_event.code {
-            KeyCode::Esc => Some(Action::OpenPopup {
-                popup: Box::new(TaskListPopup::new()),
-            }),
+            KeyCode::Esc => Some(Action::ClosePopup),
+            // KeyCode::Esc => Some(Action::OpenPopup {
+            //     popup: Box::new(TaskListPopup::new()),
+            // }),
             KeyCode::Enter => Some(Action::AddTask {
                 task: Task {
+                    uuid: Uuid::new_v4(),
                     title: self.current_title.clone(),
                     status: self.current_status.clone(),
                 },

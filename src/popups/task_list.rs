@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{cell::RefCell, fmt::Display, rc::Rc};
 
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent},
@@ -8,15 +8,17 @@ use ratatui::{
     widgets::{Block, Clear, List, ListItem, ListState, Paragraph},
 };
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::{
     app::{Action, Popup},
     popups::add_task::AddTaskPopup,
+    storage::TaskManager,
     theme::Theme,
     utils::popup_area,
 };
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub enum TaskStatus {
     Done,
     Ongoing,
@@ -59,8 +61,10 @@ impl Display for TaskStatus {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+// TODO: use an id / uuid ?
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct Task {
+    pub uuid: Uuid,
     pub title: String,
     pub status: TaskStatus,
 }
@@ -74,34 +78,50 @@ impl Task {
 }
 
 pub struct TaskListPopup {
-    tasks: Vec<Task>,
+    task_manager: Rc<RefCell<TaskManager>>,
     list_state: ListState,
 }
 
 impl TaskListPopup {
-    pub fn new() -> Self {
-        TaskListPopup {
-            tasks: Vec::new(),
-            list_state: ListState::default(),
-        }
-    }
-
-    pub fn from_iter(tasks: &[Task]) -> Self {
+    pub fn new(task_manager: Rc<RefCell<TaskManager>>, selected_task_idx: usize) -> Self {
         let mut list_state = ListState::default();
-        list_state.select(Some(0));
+        let task_count = task_manager.borrow().tasks.len();
+        if task_count > 0 {
+            list_state.select(Some(selected_task_idx)); // Select first item by default
+        }
+
         TaskListPopup {
-            tasks: tasks.to_vec(),
-            list_state,
+            task_manager,
+            list_state: list_state,
         }
     }
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> Option<Action> {
         match key_event.code {
-            KeyCode::Char('t') => return Some(Action::ClosePopup),
+            KeyCode::Char('t') | KeyCode::Esc => return Some(Action::ClosePopup),
             KeyCode::Char('a') => {
                 return Some(Action::OpenPopup {
                     popup: Box::new(AddTaskPopup::new()),
                 });
+            }
+            KeyCode::Char('d') => {
+                if let Some(selected_index) = &self.list_state.selected() {
+                    let task_manager_borrowed = self.task_manager.borrow();
+                    let selected_task_uuid = task_manager_borrowed.tasks[*selected_index].uuid;
+                    drop(task_manager_borrowed);
+
+                    let _ = self
+                        .task_manager
+                        .borrow_mut()
+                        .delete_task(selected_task_uuid);
+
+                    let new_len = self.task_manager.borrow().tasks.len();
+                    if new_len == 0 {
+                        self.list_state.select(None);
+                    } else if *selected_index >= new_len {
+                        self.list_state.select(Some(new_len - 1));
+                    }
+                }
             }
             KeyCode::Up => {
                 if let Some(selected_index) = &self.list_state.selected() {
@@ -111,19 +131,16 @@ impl TaskListPopup {
             }
             KeyCode::Down => {
                 if let Some(selected_index) = &self.list_state.selected() {
-                    let new_selected_index =
-                        usize::min(selected_index.saturating_add(1), self.tasks.len() - 1);
+                    let new_selected_index = usize::min(
+                        selected_index.saturating_add(1),
+                        self.task_manager.borrow().tasks.len() - 1,
+                    );
                     self.list_state.select(Some(new_selected_index));
                 }
             }
             _ => {}
         }
         None
-    }
-
-    fn add_task(&mut self, title: String, status: TaskStatus) {
-        let task: Task = { Task { title, status } };
-        self.tasks.push(task);
     }
 }
 
@@ -145,7 +162,9 @@ impl Popup for TaskListPopup {
         let title_paragraphe: Paragraph = Paragraph::new(title_text).centered();
 
         let task_list: List = List::new(
-            self.tasks
+            self.task_manager
+                .borrow()
+                .tasks
                 .iter()
                 .map(|task| task.get_list_item().style(theme.text_style()))
                 .collect::<Vec<ListItem>>(),

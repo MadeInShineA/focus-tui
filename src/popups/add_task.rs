@@ -1,8 +1,10 @@
+use std::rc::Rc;
+
 use ratatui::{
     Frame,
     crossterm::event::{Event, KeyCode, KeyEvent},
     layout::{Alignment, Constraint, Layout, Rect},
-    style::{Color, Style},
+    style::Style,
     text::Text,
     widgets::{Block, Borders, Clear, Paragraph},
 };
@@ -10,7 +12,8 @@ use uuid::Uuid;
 
 use crate::{
     app::{Action, Popup},
-    popups::task_list::{Task, TaskListPopup, TaskStatus},
+    popup_factory::PopupFactory,
+    popups::task_list::{Task, TaskStatus},
     theme::Theme,
     utils::popup_area,
 };
@@ -21,14 +24,18 @@ enum SelectedField {
 }
 
 pub struct AddTaskPopup {
+    popup_factory: Rc<PopupFactory>,
+    task_opened_on_idx: usize,
     current_title: String,
     current_status: TaskStatus,
     selected_field: SelectedField,
 }
 
 impl AddTaskPopup {
-    pub fn new() -> Self {
+    pub fn new(popup_factory: Rc<PopupFactory>, task_opened_on_idx: usize) -> Self {
         AddTaskPopup {
+            popup_factory,
+            task_opened_on_idx,
             current_title: String::from(""),
             current_status: TaskStatus::Todo,
             selected_field: SelectedField::Title,
@@ -37,10 +44,12 @@ impl AddTaskPopup {
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> Option<Action> {
         match key_event.code {
-            KeyCode::Esc => Some(Action::ClosePopup),
-            // KeyCode::Esc => Some(Action::OpenPopup {
-            //     popup: Box::new(TaskListPopup::new()),
-            // }),
+            // KeyCode::Esc => Some(Action::ClosePopup),
+            KeyCode::Esc => Some(Action::OpenPopup {
+                popup: self
+                    .popup_factory
+                    .create_task_list_popup(self.task_opened_on_idx),
+            }),
             KeyCode::Enter => Some(Action::AddTask {
                 task: Task {
                     uuid: Uuid::new_v4(),

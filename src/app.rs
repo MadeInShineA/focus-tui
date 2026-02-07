@@ -8,9 +8,7 @@ use ratatui::{
 };
 
 use crate::{
-    popups::task_list::{Task, TaskListPopup},
-    storage::TaskManager,
-    theme::Theme,
+    popup_factory::PopupFactory, popups::task_list::Task, storage::TaskManager, theme::Theme,
 };
 use crate::{
     screens::{countdown::CountdownScreen, welcome::WelcomeScreen},
@@ -45,7 +43,7 @@ pub trait Popup {
 }
 
 pub struct App {
-    task_manager: Rc<RefCell<TaskManager>>,
+    popup_factory: Rc<PopupFactory>,
     current_screen: Box<dyn Screen>,
     current_popup: Option<Box<dyn Popup>>,
     theme: Theme,
@@ -58,7 +56,9 @@ impl App {
     pub fn new() -> Self {
         App {
             // TODO: Handle errors
-            task_manager: Rc::new(RefCell::new(TaskManager::new("./tasks.json").unwrap())),
+            popup_factory: Rc::new(PopupFactory::new(Rc::new(RefCell::new(
+                TaskManager::new("./tasks.json").unwrap(),
+            )))),
             current_screen: Box::new(WelcomeScreen::new()),
             current_popup: None,
             theme: Theme::catppuccin_mocha(),
@@ -99,10 +99,7 @@ impl App {
                     KeyCode::Char('q') => self.handle_action(Action::Quit),
                     KeyCode::Char('t') if self.current_popup.is_none() => {
                         self.handle_action(Action::OpenPopup {
-                            popup: Box::new(TaskListPopup::new(
-                                self.task_manager.clone(),
-                                0 as usize,
-                            )),
+                            popup: self.popup_factory.create_task_list_popup(0),
                         })
                     }
                     _ => {
@@ -140,13 +137,14 @@ impl App {
             }
             Action::AddTask { task } => {
                 // TODO: Handle errors
-                self.task_manager.borrow_mut().add_task(task).unwrap();
-                let added_task_idx: usize = self.task_manager.borrow().tasks.len();
+                self.popup_factory
+                    .task_manager
+                    .borrow_mut()
+                    .add_task(task)
+                    .unwrap();
+                let added_task_idx: usize = self.popup_factory.task_manager.borrow().tasks.len();
                 self.handle_action(Action::OpenPopup {
-                    popup: Box::new(TaskListPopup::new(
-                        self.task_manager.clone(),
-                        added_task_idx,
-                    )),
+                    popup: self.popup_factory.create_task_list_popup(added_task_idx),
                 });
             }
             Action::OpenPopup { popup } => self.current_popup = Some(popup),

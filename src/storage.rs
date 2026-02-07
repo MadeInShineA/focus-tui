@@ -72,19 +72,16 @@ impl TaskManager {
         self.save_tasks()
     }
 
-    pub fn edit_task_title(&mut self, task_uuid: Uuid, new_title: String) {
-        for task in &mut self.tasks {
+    pub fn edit_task(
+        &mut self,
+        task_uuid: Uuid,
+        new_task_title: String,
+        new_task_status: TaskStatus,
+    ) {
+        for task in self.tasks.iter_mut() {
             if task.uuid == task_uuid {
-                task.title = new_title;
-                break;
-            }
-        }
-    }
-
-    pub fn edit_task_status(&mut self, task_uuid: Uuid, new_status: TaskStatus) {
-        for task in &mut self.tasks {
-            if task.uuid == task_uuid {
-                task.status = new_status;
+                task.title = new_task_title;
+                task.status = new_task_status;
                 break;
             }
         }

@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::{
     app::{Action, Popup},
-    popups::add_task::AddTaskPopup,
+    popup_factory::PopupFactory,
     storage::TaskManager,
     theme::Theme,
     utils::popup_area,
@@ -78,12 +78,17 @@ impl Task {
 }
 
 pub struct TaskListPopup {
+    popup_factory: Rc<PopupFactory>,
     task_manager: Rc<RefCell<TaskManager>>,
     list_state: ListState,
 }
 
 impl TaskListPopup {
-    pub fn new(task_manager: Rc<RefCell<TaskManager>>, selected_task_idx: usize) -> Self {
+    pub fn new(
+        popup_factory: Rc<PopupFactory>,
+        task_manager: Rc<RefCell<TaskManager>>,
+        selected_task_idx: usize,
+    ) -> Self {
         let mut list_state = ListState::default();
         let task_count = task_manager.borrow().tasks.len();
         if task_count > 0 {
@@ -91,6 +96,7 @@ impl TaskListPopup {
         }
 
         TaskListPopup {
+            popup_factory,
             task_manager,
             list_state: list_state,
         }
@@ -100,8 +106,11 @@ impl TaskListPopup {
         match key_event.code {
             KeyCode::Char('t') | KeyCode::Esc => return Some(Action::ClosePopup),
             KeyCode::Char('a') => {
+                // TODO: Double check it it's correct to use .unwrap_or(0)
                 return Some(Action::OpenPopup {
-                    popup: Box::new(AddTaskPopup::new()),
+                    popup: self
+                        .popup_factory
+                        .create_add_task_popup(self.list_state.selected().unwrap_or(0)),
                 });
             }
             KeyCode::Char('d') => {

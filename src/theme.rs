@@ -6,6 +6,7 @@ pub struct Theme {
     pub background_style: Style,
     pub border_style: Style,
     pub text_color: Color,
+    pub error_text_color: Color,
     pub work_accent_color: Color,
     pub break_accent_color: Color,
 }
@@ -16,6 +17,7 @@ impl Theme {
             background_style: Style::default().bg(Color::Rgb(30, 30, 46)),
             border_style: Style::default().fg(Color::Rgb(205, 214, 244)),
             text_color: Color::Rgb(205, 214, 244),
+            error_text_color: Color::Rgb(243, 139, 168),
             work_accent_color: Color::Rgb(166, 227, 161),
             break_accent_color: Color::Rgb(137, 180, 250),
         }
@@ -26,6 +28,7 @@ impl Theme {
             background_style: Style::default().bg(Color::Rgb(239, 241, 245)),
             border_style: Style::default().fg(Color::Rgb(76, 79, 105)),
             text_color: Color::Rgb(76, 79, 105),
+            error_text_color: Color::Rgb(210, 15, 57),
             work_accent_color: Color::Rgb(64, 160, 43),
             break_accent_color: Color::Rgb(30, 102, 245),
         }
@@ -49,5 +52,9 @@ impl Theme {
 
     pub fn text_style(&self) -> Style {
         Style::default().fg(self.text_color)
+    }
+
+    pub fn error_text_style(&self) -> Style {
+        Style::default().fg(self.error_text_color)
     }
 }

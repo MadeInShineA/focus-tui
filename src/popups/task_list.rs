@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{
     app::{Action, Popup},
     popup_factory::PopupFactory,
-    storage::TaskManager,
+    storage::{SaveTaskError, TaskManager},
     theme::Theme,
     utils::popup_area,
 };
@@ -119,16 +119,26 @@ impl TaskListPopup {
                     let selected_task_uuid = task_manager_borrowed.tasks[*selected_index].uuid;
                     drop(task_manager_borrowed);
 
-                    let _ = self
+                    let delete_task_result: Result<(), SaveTaskError> = self
                         .task_manager
                         .borrow_mut()
                         .delete_task(selected_task_uuid);
 
-                    let new_len = self.task_manager.borrow().tasks.len();
-                    if new_len == 0 {
-                        self.list_state.select(None);
-                    } else if *selected_index >= new_len {
-                        self.list_state.select(Some(new_len - 1));
+                    match delete_task_result {
+                        Ok(_) => {
+                            let new_len = self.task_manager.borrow().tasks.len();
+                            if new_len == 0 {
+                                self.list_state.select(None);
+                            } else if *selected_index >= new_len {
+                                self.list_state.select(Some(new_len - 1));
+                            }
+                            return None;
+                        }
+                        Err(error) => {
+                            return Some(Action::OpenPopup {
+                                popup: self.popup_factory.create_error_popup(error.to_string()),
+                            });
+                        }
                     }
                 }
             }

@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     app::Popup,
-    popups::{add_task::AddTaskPopup, task_list::TaskListPopup},
+    popups::{add_task::AddTaskPopup, error::ErrorPopup, task_list::TaskListPopup},
     storage::TaskManager,
 };
 
@@ -26,5 +26,9 @@ impl PopupFactory {
 
     pub fn create_add_task_popup(&self, task_opened_on_idx: usize) -> Box<dyn Popup> {
         Box::new(AddTaskPopup::new(Rc::new(self.clone()), task_opened_on_idx))
+    }
+
+    pub fn create_error_popup(&self, error_content: String) -> Box<dyn Popup> {
+        Box::new(ErrorPopup::new(error_content))
     }
 }

@@ -8,7 +8,10 @@ use ratatui::{
 };
 
 use crate::{
-    popup_factory::PopupFactory, popups::task_list::Task, storage::TaskManager, theme::Theme,
+    popup_factory::PopupFactory,
+    popups::task_list::Task,
+    storage::{SaveTaskError, TaskManager},
+    theme::Theme,
 };
 use crate::{
     screens::{countdown::CountdownScreen, welcome::WelcomeScreen},
@@ -136,16 +139,17 @@ impl App {
                 ));
             }
             Action::AddTask { task } => {
-                // TODO: Handle errors
-                self.popup_factory
-                    .task_manager
-                    .borrow_mut()
-                    .add_task(task)
-                    .unwrap();
-                let added_task_idx: usize = self.popup_factory.task_manager.borrow().tasks.len();
-                self.handle_action(Action::OpenPopup {
-                    popup: self.popup_factory.create_task_list_popup(added_task_idx),
-                });
+                let add_result: Result<usize, SaveTaskError> =
+                    self.popup_factory.task_manager.borrow_mut().add_task(task);
+
+                match add_result {
+                    Ok(idx) => self.handle_action(Action::OpenPopup {
+                        popup: self.popup_factory.create_task_list_popup(idx),
+                    }),
+                    Err(error) => self.handle_action(Action::OpenPopup {
+                        popup: self.popup_factory.create_error_popup(error.to_string()),
+                    }),
+                }
             }
             Action::OpenPopup { popup } => self.current_popup = Some(popup),
             Action::ClosePopup => self.current_popup = None,

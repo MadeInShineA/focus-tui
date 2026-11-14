@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{
     app::{Action, Popup},
     popup_factory::PopupFactory,
-    popups::task_list::{Task, TaskStatus},
+    task::{Task, TaskStatus},
     theme::Theme,
     utils::popup_area,
 };

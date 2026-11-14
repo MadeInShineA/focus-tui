@@ -9,8 +9,8 @@ use ratatui::{
 
 use crate::{
     popup_factory::PopupFactory,
-    popups::task_list::Task,
     storage::{SaveTaskError, TaskManager},
+    task::Task,
     theme::Theme,
 };
 use crate::{

@@ -6,7 +6,7 @@ use std::{
 
 use uuid::Uuid;
 
-use crate::popups::task_list::{Task, TaskStatus};
+use crate::task::{Task, TaskStatus};
 
 pub struct TaskManager {
     pub tasks: Vec<Task>,

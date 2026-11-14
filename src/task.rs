@@ -6,33 +6,33 @@ use uuid::Uuid;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub enum TaskStatus {
-    Done,
-    Ongoing,
     Todo,
+    Ongoing,
+    Done,
 }
 
 impl TaskStatus {
     pub fn next(&self) -> TaskStatus {
         match self {
-            TaskStatus::Done => TaskStatus::Ongoing,
-            TaskStatus::Ongoing => TaskStatus::Todo,
-            TaskStatus::Todo => TaskStatus::Done,
+            TaskStatus::Todo => TaskStatus::Ongoing,
+            TaskStatus::Ongoing => TaskStatus::Done,
+            TaskStatus::Done => TaskStatus::Todo,
         }
     }
 
     pub fn previous(&self) -> TaskStatus {
         match self {
-            TaskStatus::Done => TaskStatus::Todo,
-            TaskStatus::Ongoing => TaskStatus::Done,
-            TaskStatus::Todo => TaskStatus::Ongoing,
+            TaskStatus::Todo => TaskStatus::Done,
+            TaskStatus::Ongoing => TaskStatus::Todo,
+            TaskStatus::Done => TaskStatus::Ongoing,
         }
     }
 
     pub fn emoji(&self) -> String {
         match self {
-            TaskStatus::Done => String::from('✅'),
-            TaskStatus::Ongoing => String::from('⏳'),
             TaskStatus::Todo => String::from('❌'),
+            TaskStatus::Ongoing => String::from('⏳'),
+            TaskStatus::Done => String::from('✅'),
         }
     }
 }
@@ -40,9 +40,9 @@ impl TaskStatus {
 impl Display for TaskStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TaskStatus::Done => write!(f, "Done"),
-            TaskStatus::Ongoing => write!(f, "Ongoing"),
             TaskStatus::Todo => write!(f, "Todo"),
+            TaskStatus::Ongoing => write!(f, "Ongoing"),
+            TaskStatus::Done => write!(f, "Done"),
         }
     }
 }
@@ -59,5 +59,9 @@ impl Task {
         let content: String = format!("{} {}", self.status.emoji(), self.title);
         let line: Line = Line::from(content).centered();
         ListItem::new(line)
+    }
+
+    pub fn cycle_status(&mut self) {
+        self.status = self.status.next();
     }
 }

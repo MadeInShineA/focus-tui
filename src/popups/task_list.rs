@@ -1,4 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
 
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent},
@@ -8,102 +7,65 @@ use ratatui::{
     widgets::{Block, Clear, List, ListItem, ListState, Paragraph},
 };
 
-use crate::{
-    app::{Action, Popup},
-    popup_factory::PopupFactory,
-    storage::{SaveTaskError, TaskManager},
-    theme::Theme,
-    utils::popup_area,
-};
+use crate::{app::Action, task::Task, theme::Theme, utils::popup_area};
 
 pub struct TaskListPopup {
-    popup_factory: Rc<PopupFactory>,
-    task_manager: Rc<RefCell<TaskManager>>,
     list_state: ListState,
 }
 
 impl TaskListPopup {
-    pub fn new(
-        popup_factory: Rc<PopupFactory>,
-        task_manager: Rc<RefCell<TaskManager>>,
-        selected_task_idx: usize,
-    ) -> Self {
+    pub fn new(selected_task_idx: usize) -> Self {
         let mut list_state = ListState::default();
-        let task_count = task_manager.borrow().tasks.len();
-        if task_count > 0 {
-            list_state.select(Some(selected_task_idx)); // Select first item by default
-        }
+        list_state.select(Some(selected_task_idx));
 
-        TaskListPopup {
-            popup_factory,
-            task_manager,
-            list_state: list_state,
-        }
+        TaskListPopup { list_state }
     }
 
-    fn handle_key_event(&mut self, key_event: &KeyEvent) -> Option<Action> {
+    fn handle_key_event(&mut self, key_event: &KeyEvent, tasks: &[Task]) -> Option<Action> {
         match key_event.code {
             KeyCode::Char('t') | KeyCode::Esc => return Some(Action::ClosePopup),
             KeyCode::Char('a') => {
-                // TODO: Double check it it's correct to use .unwrap_or(0)
-                return Some(Action::OpenPopup {
-                    popup: self
-                        .popup_factory
-                        .create_add_task_popup(self.list_state.selected().unwrap_or(0)),
+                return Some(Action::OpenAddTask {
+                    return_to: (self.list_state.selected().unwrap_or(0)),
                 });
             }
+
             KeyCode::Char('d') => {
-                if let Some(selected_index) = &self.list_state.selected() {
-                    let task_manager_borrowed = self.task_manager.borrow();
-                    let selected_task_uuid = task_manager_borrowed.tasks[*selected_index].uuid;
-                    drop(task_manager_borrowed);
-
-                    let delete_task_result: Result<(), SaveTaskError> = self
-                        .task_manager
-                        .borrow_mut()
-                        .delete_task(selected_task_uuid);
-
-                    match delete_task_result {
-                        Ok(_) => {
-                            let new_len = self.task_manager.borrow().tasks.len();
-                            if new_len == 0 {
-                                self.list_state.select(None);
-                            } else if *selected_index >= new_len {
-                                self.list_state.select(Some(new_len - 1));
-                            }
-                            return None;
-                        }
-                        Err(error) => {
-                            return Some(Action::OpenPopup {
-                                popup: self.popup_factory.create_error_popup(error.to_string()),
-                            });
-                        }
-                    }
+                if let Some(selected_task) = self.list_state.selected().and_then(|i| tasks.get(i)) {
+                    return Some(Action::DeleteTask {
+                        task_uuid: selected_task.uuid,
+                    });
                 }
             }
-            KeyCode::Up => {
-                if let Some(selected_index) = &self.list_state.selected() {
-                    let new_selected_index: usize = selected_index.saturating_sub(1);
-                    self.list_state.select(Some(new_selected_index));
-                }
-            }
-            KeyCode::Down => {
-                if let Some(selected_index) = &self.list_state.selected() {
-                    let new_selected_index = usize::min(
-                        selected_index.saturating_add(1),
-                        self.task_manager.borrow().tasks.len() - 1,
-                    );
-                    self.list_state.select(Some(new_selected_index));
+
+            KeyCode::Up => self.list_state.select_previous(),
+            KeyCode::Down => self.list_state.select_next(),
+            KeyCode::Tab => {
+                if let Some(selected_task) = self.list_state.selected().and_then(|i| tasks.get(i)) {
+                    return Some(Action::CycleTaskStatus {
+                        task_uuid: selected_task.uuid,
+                    });
                 }
             }
             _ => {}
         }
         None
     }
-}
 
-impl Popup for TaskListPopup {
-    fn draw(&mut self, frame: &mut ratatui::Frame, area: ratatui::prelude::Rect, theme: &Theme) {
+    pub fn draw(
+        &mut self,
+        frame: &mut ratatui::Frame,
+        area: ratatui::prelude::Rect,
+        theme: &Theme,
+        tasks: &[Task],
+    ) {
+        if tasks.is_empty() {
+            self.list_state.select(None);
+        } else {
+            let i = self.list_state.selected().unwrap_or(0).min(tasks.len() - 1);
+            self.list_state.select(Some(i));
+        }
+
         let block = Block::bordered()
             .border_style(theme.border_style)
             .style(theme.background_style);
@@ -120,9 +82,7 @@ impl Popup for TaskListPopup {
         let title_paragraphe: Paragraph = Paragraph::new(title_text).centered();
 
         let task_list: List = List::new(
-            self.task_manager
-                .borrow()
-                .tasks
+            tasks
                 .iter()
                 .map(|task| task.get_list_item().style(theme.text_style()))
                 .collect::<Vec<ListItem>>(),
@@ -134,9 +94,9 @@ impl Popup for TaskListPopup {
         frame.render_stateful_widget(task_list, inner_layout[1], &mut self.list_state);
     }
 
-    fn handle_event(&mut self, event: &Event) -> Option<Action> {
+    pub fn handle_event(&mut self, event: &Event, tasks: &[Task]) -> Option<Action> {
         match event {
-            Event::Key(key_event) => self.handle_key_event(key_event),
+            Event::Key(key_event) => self.handle_key_event(key_event, tasks),
 
             _ => None,
         }

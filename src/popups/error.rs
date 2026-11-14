@@ -6,7 +6,7 @@ use ratatui::{
 };
 
 use crate::{
-    app::{Action, Popup},
+    app::Action,
     utils::popup_area,
 };
 
@@ -25,10 +25,8 @@ impl ErrorPopup {
             _ => None,
         }
     }
-}
 
-impl Popup for ErrorPopup {
-    fn draw(
+    pub fn draw(
         &mut self,
         frame: &mut ratatui::Frame,
         area: ratatui::prelude::Rect,
@@ -57,7 +55,7 @@ impl Popup for ErrorPopup {
         frame.render_widget(content_text, inner_layout[1]);
     }
 
-    fn handle_event(&mut self, event: &Event) -> Option<Action> {
+    pub fn handle_event(&mut self, event: &Event) -> Option<Action> {
         match event {
             Event::Key(key_event) => self.handle_key_event(key_event),
 

@@ -158,4 +158,14 @@ impl TaskManager {
             }
         }
     }
+
+    pub fn cycle_task(&mut self, task_uuid: Uuid) -> Result<(), SaveTaskError> {
+        let mut new_tasks = self.tasks.clone();
+        if let Some(task) = new_tasks.iter_mut().find(|t| t.uuid == task_uuid) {
+            task.cycle_status();
+        }
+        self.save_tasks(&new_tasks)?;
+        self.tasks = new_tasks;
+        Ok(())
+    }
 }

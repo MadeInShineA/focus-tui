@@ -1,4 +1,4 @@
-use std::{cell::RefCell, io, rc::Rc, time::Duration};
+use std::{io, time::Duration};
 
 use ratatui::{
     DefaultTerminal, Frame,
@@ -6,11 +6,12 @@ use ratatui::{
     layout::Rect,
     widgets::{Block, Borders},
 };
+use uuid::Uuid;
 
 use crate::{
-    popup_factory::PopupFactory,
-    storage::{SaveTaskError, TaskManager},
+    popups::{add_task::AddTaskPopup, error::ErrorPopup, task_list::TaskListPopup},
     task::Task,
+    task_manager::{SaveTaskError, TaskManager},
     theme::Theme,
 };
 use crate::{
@@ -27,10 +28,19 @@ pub enum Action {
     AddTask {
         task: Task,
     },
-
-    OpenPopup {
-        popup: Box<dyn Popup>,
+    DeleteTask {
+        task_uuid: Uuid,
     },
+    OpenTaskList {
+        selected_task_idx: usize,
+    },
+    OpenAddTask {
+        return_to: usize,
+    },
+    CycleTaskStatus {
+        task_uuid: Uuid,
+    },
+    ShowError(String),
     ClosePopup,
 }
 
@@ -40,15 +50,34 @@ pub trait Screen {
     fn update(&mut self);
 }
 
-pub trait Popup {
-    fn draw(&mut self, frame: &mut Frame, area: Rect, theme: &Theme);
-    fn handle_event(&mut self, event: &Event) -> Option<Action>;
+pub enum Popup {
+    TaskList(TaskListPopup),
+    AddTask(AddTaskPopup),
+    Error(ErrorPopup),
+}
+
+impl Popup {
+    pub fn draw(&mut self, frame: &mut Frame, area: Rect, theme: &Theme, tasks: &[Task]) {
+        match self {
+            Popup::TaskList(p) => p.draw(frame, area, theme, tasks),
+            Popup::AddTask(p) => p.draw(frame, area, theme),
+            Popup::Error(p) => p.draw(frame, area, theme),
+        }
+    }
+
+    pub fn handle_event(&mut self, event: &Event, tasks: &[Task]) -> Option<Action> {
+        match self {
+            Popup::TaskList(p) => p.handle_event(event, tasks),
+            Popup::AddTask(p) => p.handle_event(event),
+            Popup::Error(p) => p.handle_event(event),
+        }
+    }
 }
 
 pub struct App {
-    popup_factory: Rc<PopupFactory>,
+    task_manager: TaskManager,
     current_screen: Box<dyn Screen>,
-    current_popup: Option<Box<dyn Popup>>,
+    current_popup: Option<Popup>,
     theme: Theme,
     work_duration_minutes: u64,
     break_duration_minutes: u64,
@@ -59,9 +88,7 @@ impl App {
     pub fn new() -> Self {
         App {
             // TODO: Handle errors
-            popup_factory: Rc::new(PopupFactory::new(Rc::new(RefCell::new(
-                TaskManager::new("./tasks.json").unwrap(),
-            )))),
+            task_manager: TaskManager::new("./tasks.json").unwrap(),
             current_screen: Box::new(WelcomeScreen::new()),
             current_popup: None,
             theme: Theme::catppuccin_mocha(),
@@ -91,7 +118,7 @@ impl App {
         let inner_area = block.inner(frame.area());
         self.current_screen.draw(frame, inner_area, &self.theme);
         if let Some(current_popup) = &mut self.current_popup {
-            current_popup.draw(frame, inner_area, &self.theme);
+            current_popup.draw(frame, inner_area, &self.theme, &self.task_manager.tasks);
         }
     }
 
@@ -101,14 +128,15 @@ impl App {
                 match key_event.code {
                     KeyCode::Char('q') => self.handle_action(Action::Quit),
                     KeyCode::Char('t') if self.current_popup.is_none() => {
-                        self.handle_action(Action::OpenPopup {
-                            popup: self.popup_factory.create_task_list_popup(0),
+                        self.handle_action(Action::OpenTaskList {
+                            selected_task_idx: 0,
                         })
                     }
                     _ => {
                         if let Some(action) = {
                             if let Some(current_popup) = &mut self.current_popup {
-                                current_popup.handle_event(&Event::Key(key_event))
+                                current_popup
+                                    .handle_event(&Event::Key(key_event), &self.task_manager.tasks)
                             } else {
                                 self.current_screen.handle_event(&Event::Key(key_event))
                             }
@@ -138,20 +166,39 @@ impl App {
                     self.break_duration_minutes,
                 ));
             }
+            Action::OpenTaskList { selected_task_idx } => {
+                self.current_popup = Some(Popup::TaskList(TaskListPopup::new(selected_task_idx)))
+            }
+
+            Action::OpenAddTask { return_to } => {
+                self.current_popup = Some(Popup::AddTask(AddTaskPopup::new(return_to)))
+            }
+
             Action::AddTask { task } => {
-                let add_result: Result<usize, SaveTaskError> =
-                    self.popup_factory.task_manager.borrow_mut().add_task(task);
+                let add_result: Result<usize, SaveTaskError> = self.task_manager.add_task(task);
 
                 match add_result {
-                    Ok(idx) => self.handle_action(Action::OpenPopup {
-                        popup: self.popup_factory.create_task_list_popup(idx),
+                    Ok(idx) => self.handle_action(Action::OpenTaskList {
+                        selected_task_idx: (idx),
                     }),
-                    Err(error) => self.handle_action(Action::OpenPopup {
-                        popup: self.popup_factory.create_error_popup(error.to_string()),
-                    }),
+                    Err(error) => self.handle_action(Action::ShowError(error.to_string())),
                 }
             }
-            Action::OpenPopup { popup } => self.current_popup = Some(popup),
+            Action::DeleteTask { task_uuid } => match self.task_manager.delete_task(task_uuid) {
+                Ok(()) => {}
+                Err(error) => self.handle_action(Action::ShowError(error.to_string())),
+            },
+            Action::CycleTaskStatus { task_uuid } => {
+                match self.task_manager.cycle_task(task_uuid) {
+                    Ok(()) => {}
+                    Err(error) => self.handle_action(Action::ShowError(error.to_string())),
+                }
+            }
+
+            Action::ShowError(error) => {
+                self.current_popup = Some(Popup::Error(ErrorPopup::new(error)))
+            }
+
             Action::ClosePopup => self.current_popup = None,
         }
     }

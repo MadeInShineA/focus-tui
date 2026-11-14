@@ -1,4 +1,3 @@
-use std::rc::Rc;
 
 use ratatui::{
     Frame,
@@ -11,8 +10,7 @@ use ratatui::{
 use uuid::Uuid;
 
 use crate::{
-    app::{Action, Popup},
-    popup_factory::PopupFactory,
+    app::Action,
     task::{Task, TaskStatus},
     theme::Theme,
     utils::popup_area,
@@ -24,7 +22,6 @@ enum SelectedField {
 }
 
 pub struct AddTaskPopup {
-    popup_factory: Rc<PopupFactory>,
     task_opened_on_idx: usize,
     current_title: String,
     current_status: TaskStatus,
@@ -32,9 +29,8 @@ pub struct AddTaskPopup {
 }
 
 impl AddTaskPopup {
-    pub fn new(popup_factory: Rc<PopupFactory>, task_opened_on_idx: usize) -> Self {
+    pub fn new(task_opened_on_idx: usize) -> Self {
         AddTaskPopup {
-            popup_factory,
             task_opened_on_idx,
             current_title: String::from(""),
             current_status: TaskStatus::Todo,
@@ -45,10 +41,8 @@ impl AddTaskPopup {
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> Option<Action> {
         match key_event.code {
             // KeyCode::Esc => Some(Action::ClosePopup),
-            KeyCode::Esc => Some(Action::OpenPopup {
-                popup: self
-                    .popup_factory
-                    .create_task_list_popup(self.task_opened_on_idx),
+            KeyCode::Esc => Some(Action::OpenTaskList {
+                selected_task_idx: self.task_opened_on_idx,
             }),
             KeyCode::Enter => Some(Action::AddTask {
                 task: Task {
@@ -85,10 +79,8 @@ impl AddTaskPopup {
             }
         }
     }
-}
 
-impl Popup for AddTaskPopup {
-    fn draw(&mut self, frame: &mut Frame, area: Rect, theme: &Theme) {
+    pub fn draw(&mut self, frame: &mut Frame, area: Rect, theme: &Theme) {
         let block = Block::bordered()
             .border_style(theme.border_style)
             .style(theme.background_style);
@@ -146,7 +138,7 @@ impl Popup for AddTaskPopup {
         frame.render_widget(status_paragraph, task_chunks[2]);
     }
 
-    fn handle_event(&mut self, event: &Event) -> Option<Action> {
+    pub fn handle_event(&mut self, event: &Event) -> Option<Action> {
         match event {
             Event::Key(key_event) => self.handle_key_event(key_event),
 

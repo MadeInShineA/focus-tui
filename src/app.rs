@@ -9,7 +9,10 @@ use ratatui::{
 use uuid::Uuid;
 
 use crate::{
-    popups::{add_task::AddTaskPopup, error::ErrorPopup, task_list::TaskListPopup},
+    popups::{
+        add_task::AddTaskPopup, edit_task::EditTaskPopup, error::ErrorPopup,
+        task_list::TaskListPopup,
+    },
     task::Task,
     task_manager::{SaveTaskError, TaskManager},
     theme::Theme,
@@ -31,11 +34,19 @@ pub enum Action {
     DeleteTask {
         task_uuid: Uuid,
     },
+    EditTask {
+        return_to: usize,
+        task: Task,
+    },
     OpenTaskList {
         selected_task_idx: usize,
     },
     OpenAddTask {
         return_to: usize,
+    },
+    OpenEditTask {
+        return_to: usize,
+        selected_task: Task,
     },
     CycleTaskStatus {
         task_uuid: Uuid,
@@ -53,6 +64,7 @@ pub trait Screen {
 pub enum Popup {
     TaskList(TaskListPopup),
     AddTask(AddTaskPopup),
+    EditTask(EditTaskPopup),
     Error(ErrorPopup),
 }
 
@@ -61,6 +73,7 @@ impl Popup {
         match self {
             Popup::TaskList(p) => p.draw(frame, area, theme, tasks),
             Popup::AddTask(p) => p.draw(frame, area, theme),
+            Popup::EditTask(p) => p.draw(frame, area, theme),
             Popup::Error(p) => p.draw(frame, area, theme),
         }
     }
@@ -69,6 +82,7 @@ impl Popup {
         match self {
             Popup::TaskList(p) => p.handle_event(event, tasks),
             Popup::AddTask(p) => p.handle_event(event),
+            Popup::EditTask(p) => p.handle_event(event),
             Popup::Error(p) => p.handle_event(event),
         }
     }
@@ -188,6 +202,27 @@ impl App {
                 Ok(()) => {}
                 Err(error) => self.handle_action(Action::ShowError(error.to_string())),
             },
+            Action::OpenEditTask {
+                return_to,
+                selected_task,
+            } => {
+                self.current_popup = Some(Popup::EditTask(EditTaskPopup::new(
+                    return_to,
+                    selected_task,
+                )))
+            }
+            Action::EditTask { return_to, task } => {
+                let edit_result = self
+                    .task_manager
+                    .edit_task(task.uuid, task.title, task.status);
+
+                match edit_result {
+                    Ok(()) => self.handle_action(Action::OpenTaskList {
+                        selected_task_idx: (return_to),
+                    }),
+                    Err(error) => self.handle_action(Action::ShowError(error.to_string())),
+                }
+            }
             Action::CycleTaskStatus { task_uuid } => {
                 match self.task_manager.cycle_task(task_uuid) {
                     Ok(()) => {}

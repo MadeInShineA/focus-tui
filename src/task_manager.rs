@@ -1,7 +1,7 @@
 use std::{
     fmt::Display,
     fs::{read_to_string, write},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use uuid::Uuid;
@@ -13,71 +13,42 @@ pub struct TaskManager {
     tasks_file_path: PathBuf,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum LoadTaskFileError {
+    #[error("An I/O error occurred while reading the file at {}: {}", .0.display(), .1)]
     IoError(PathBuf, std::io::Error),
+
+    #[error("JSON parsing error in task file at {}: {}", .0.display(), .1)]
     ParsingError(PathBuf, serde_json::Error),
 }
 
-impl Display for LoadTaskFileError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LoadTaskFileError::IoError(path, error) => write!(
-                f,
-                "An I/O error occurred while reading the file at {}: {}",
-                path.display(),
-                error
-            ),
-            LoadTaskFileError::ParsingError(path, error) => write!(
-                f,
-                "JSON parsing error in task file at {}: {}",
-                path.display(),
-                error
-            ),
-        }
-    }
-}
-
+#[derive(Debug, thiserror::Error)]
 pub enum SaveTaskError {
+    #[error("Failed to serialize tasks to JSON for file '{}': {}", .0.display(), .1)]
     JsonConversionError(PathBuf, serde_json::Error),
+    #[error("{}", describe_write_error(.0, .1))]
     FileWriteError(PathBuf, std::io::Error),
 }
 
-impl Display for SaveTaskError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SaveTaskError::JsonConversionError(path, error) => {
-                write!(
-                    f,
-                    "Failed to serialize tasks to JSON for file '{}': {}",
-                    path.display(),
-                    error
-                )
-            }
-            SaveTaskError::FileWriteError(path, error) => {
-                if error.kind() == std::io::ErrorKind::PermissionDenied {
-                    write!(
-                        f,
-                        "Permission denied when writing to '{}'. Check file permissions.",
-                        path.display()
-                    )
-                } else if error.kind() == std::io::ErrorKind::NotFound {
-                    write!(
-                        f,
-                        "Cannot write to '{}': parent directory does not exist",
-                        path.display()
-                    )
-                } else {
-                    write!(
-                        f,
-                        "Failed to write tasks to file '{}': {}",
-                        path.display(),
-                        error
-                    )
-                }
-            }
+fn describe_write_error(path: &Path, error: &std::io::Error) -> String {
+    let path = path.display();
+    match error.kind() {
+        std::io::ErrorKind::PermissionDenied => {
+            format!("Permission denied when writing to '{path}'. Check file permissions.")
         }
+        std::io::ErrorKind::NotFound => {
+            format!("Cannot write to '{path}': parent directory does not exist")
+        }
+        _ => format!("Failed to write tasks to file '{path}': {error}"),
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum EditTaskError {
+    #[error("No task with id {0}")]
+    NotFound(Uuid),
+    #[error(transparent)]
+    Save(#[from] SaveTaskError),
 }
 
 impl TaskManager {
@@ -139,8 +110,7 @@ impl TaskManager {
 
         self.save_tasks(&new_tasks)?;
 
-        self.tasks
-            .retain(|task_element| task_element.uuid != task_uuid);
+        self.tasks = new_tasks;
         Ok(())
     }
 
@@ -149,13 +119,18 @@ impl TaskManager {
         task_uuid: Uuid,
         new_task_title: String,
         new_task_status: TaskStatus,
-    ) {
-        for task in self.tasks.iter_mut() {
-            if task.uuid == task_uuid {
-                task.title = new_task_title;
-                task.status = new_task_status;
-                break;
-            }
+    ) -> Result<(), EditTaskError> {
+        let mut new_tasks = self.tasks.clone();
+
+        if let Some(edited_task) = new_tasks.iter_mut().find(|task| task.uuid == task_uuid) {
+            edited_task.title = new_task_title;
+            edited_task.status = new_task_status;
+
+            self.save_tasks(&new_tasks)?;
+
+            Ok(())
+        } else {
+            Err(EditTaskError::NotFound(task_uuid))
         }
     }
 

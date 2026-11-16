@@ -1,4 +1,3 @@
-
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent},
     layout::{Constraint, Layout, Rect},
@@ -34,6 +33,18 @@ impl TaskListPopup {
                 if let Some(selected_task) = self.list_state.selected().and_then(|i| tasks.get(i)) {
                     return Some(Action::DeleteTask {
                         task_uuid: selected_task.uuid,
+                    });
+                }
+            }
+            KeyCode::Char('e') => {
+                if let Some((selected_task_idx, selected_task)) = self
+                    .list_state
+                    .selected()
+                    .and_then(|i| tasks.get(i).map(|task| (i, task)))
+                {
+                    return Some(Action::OpenEditTask {
+                        return_to: selected_task_idx,
+                        selected_task: selected_task.clone(),
                     });
                 }
             }

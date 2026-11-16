@@ -91,7 +91,7 @@ impl Popup {
 pub struct App {
     task_manager: TaskManager,
     current_screen: Box<dyn Screen>,
-    current_popup: Option<Popup>,
+    popups: Vec<Popup>,
     theme: Theme,
     work_duration_minutes: u64,
     break_duration_minutes: u64,
@@ -104,7 +104,7 @@ impl App {
             // TODO: Handle errors
             task_manager: TaskManager::new("./tasks.json").unwrap(),
             current_screen: Box::new(WelcomeScreen::new()),
-            current_popup: None,
+            popups: Vec::new(),
             theme: Theme::catppuccin_mocha(),
             work_duration_minutes: DEFAULT_WORK_DURATION_MINUTES,
             break_duration_minutes: DEFAULT_BREAK_DURATION_MINUTES,
@@ -131,7 +131,7 @@ impl App {
         frame.render_widget(block.clone(), frame.area());
         let inner_area = block.inner(frame.area());
         self.current_screen.draw(frame, inner_area, &self.theme);
-        if let Some(current_popup) = &mut self.current_popup {
+        if let Some(current_popup) = self.popups.last_mut() {
             current_popup.draw(frame, inner_area, &self.theme, &self.task_manager.tasks);
         }
     }
@@ -141,14 +141,14 @@ impl App {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 match key_event.code {
                     KeyCode::Char('q') => self.handle_action(Action::Quit),
-                    KeyCode::Char('t') if self.current_popup.is_none() => {
+                    KeyCode::Char('t') if self.popups.is_empty() => {
                         self.handle_action(Action::OpenTaskList {
                             selected_task_idx: 0,
                         })
                     }
                     _ => {
                         if let Some(action) = {
-                            if let Some(current_popup) = &mut self.current_popup {
+                            if let Some(current_popup) = self.popups.last_mut() {
                                 current_popup
                                     .handle_event(&Event::Key(key_event), &self.task_manager.tasks)
                             } else {
@@ -180,13 +180,13 @@ impl App {
                     self.break_duration_minutes,
                 ));
             }
-            Action::OpenTaskList { selected_task_idx } => {
-                self.current_popup = Some(Popup::TaskList(TaskListPopup::new(selected_task_idx)))
-            }
+            Action::OpenTaskList { selected_task_idx } => self
+                .popups
+                .push(Popup::TaskList(TaskListPopup::new(selected_task_idx))),
 
-            Action::OpenAddTask { return_to } => {
-                self.current_popup = Some(Popup::AddTask(AddTaskPopup::new(return_to)))
-            }
+            Action::OpenAddTask { return_to } => self
+                .popups
+                .push(Popup::AddTask(AddTaskPopup::new(return_to))),
 
             Action::AddTask { task } => {
                 let add_result: Result<usize, SaveTaskError> = self.task_manager.add_task(task);
@@ -205,12 +205,10 @@ impl App {
             Action::OpenEditTask {
                 return_to,
                 selected_task,
-            } => {
-                self.current_popup = Some(Popup::EditTask(EditTaskPopup::new(
-                    return_to,
-                    selected_task,
-                )))
-            }
+            } => self.popups.push(Popup::EditTask(EditTaskPopup::new(
+                return_to,
+                selected_task,
+            ))),
             Action::EditTask { return_to, task } => {
                 let edit_result = self
                     .task_manager
@@ -230,11 +228,11 @@ impl App {
                 }
             }
 
-            Action::ShowError(error) => {
-                self.current_popup = Some(Popup::Error(ErrorPopup::new(error)))
-            }
+            Action::ShowError(error) => self.popups.push(Popup::Error(ErrorPopup::new(error))),
 
-            Action::ClosePopup => self.current_popup = None,
+            Action::ClosePopup => {
+                self.popups.pop();
+            }
         }
     }
 }

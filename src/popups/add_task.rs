@@ -1,4 +1,3 @@
-
 use ratatui::{
     Frame,
     crossterm::event::{Event, KeyCode, KeyEvent},
@@ -44,13 +43,19 @@ impl AddTaskPopup {
             KeyCode::Esc => Some(Action::OpenTaskList {
                 selected_task_idx: self.task_opened_on_idx,
             }),
-            KeyCode::Enter => Some(Action::AddTask {
-                task: Task {
-                    uuid: Uuid::new_v4(),
-                    title: self.current_title.clone(),
-                    status: self.current_status.clone(),
-                },
-            }),
+            KeyCode::Enter => {
+                if !self.current_title.trim().is_empty() {
+                    Some(Action::AddTask {
+                        task: Task {
+                            uuid: Uuid::new_v4(),
+                            title: self.current_title.clone(),
+                            status: self.current_status.clone(),
+                        },
+                    })
+                } else {
+                    Some(Action::ShowError("Missing task title".to_string()))
+                }
+            }
             KeyCode::Tab | KeyCode::Left | KeyCode::Right => {
                 match self.selected_field {
                     SelectedField::Title => self.selected_field = SelectedField::Status,

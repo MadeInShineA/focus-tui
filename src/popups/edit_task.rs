@@ -45,14 +45,20 @@ impl EditTaskPopup {
             KeyCode::Esc => Some(Action::OpenTaskList {
                 selected_task_idx: self.task_opened_on_idx,
             }),
-            KeyCode::Enter => Some(Action::EditTask {
-                return_to: self.task_opened_on_idx,
-                task: Task {
-                    uuid: self.task_opened_on_uuid,
-                    title: self.current_title.clone(),
-                    status: self.current_status.clone(),
-                },
-            }),
+            KeyCode::Enter => {
+                if !self.current_title.trim().is_empty() {
+                    Some(Action::EditTask {
+                        return_to: self.task_opened_on_idx,
+                        task: Task {
+                            uuid: self.task_opened_on_uuid,
+                            title: self.current_title.clone(),
+                            status: self.current_status.clone(),
+                        },
+                    })
+                } else {
+                    Some(Action::ShowError("Missing task title".to_string()))
+                }
+            }
             KeyCode::Tab | KeyCode::Left | KeyCode::Right => {
                 match self.selected_field {
                     SelectedField::Title => self.selected_field = SelectedField::Status,

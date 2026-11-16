@@ -1,14 +1,11 @@
 use ratatui::{
-    crossterm::event::{Event, KeyCode, KeyEvent},
+    crossterm::event::{Event, KeyEvent},
     layout::{Constraint, Layout, Rect},
     text::Text,
     widgets::{Block, Clear, Paragraph},
 };
 
-use crate::{
-    app::Action,
-    utils::popup_area,
-};
+use crate::{app::Action, utils::popup_area};
 
 pub struct ErrorPopup {
     error_content: String,
@@ -20,10 +17,7 @@ impl ErrorPopup {
     }
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> Option<Action> {
-        match key_event.code {
-            KeyCode::Esc => return Some(Action::ClosePopup),
-            _ => None,
-        }
+        Some(Action::ClosePopup)
     }
 
     pub fn draw(

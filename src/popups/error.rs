@@ -16,7 +16,7 @@ impl ErrorPopup {
         ErrorPopup { error_content }
     }
 
-    fn handle_key_event(&mut self, key_event: &KeyEvent) -> Option<Action> {
+    fn handle_key_event(&mut self, _key_event: &KeyEvent) -> Option<Action> {
         Some(Action::ClosePopup)
     }
 

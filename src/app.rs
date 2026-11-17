@@ -9,6 +9,7 @@ use ratatui::{
 use uuid::Uuid;
 
 use crate::{
+    app::Action::ClosePopup,
     popups::{
         add_task::AddTaskPopup, edit_task::EditTaskPopup, error::ErrorPopup,
         task_list::TaskListPopup,
@@ -35,17 +36,11 @@ pub enum Action {
         task_uuid: Uuid,
     },
     EditTask {
-        return_to: usize,
         task: Task,
     },
-    OpenTaskList {
-        selected_task_idx: usize,
-    },
-    OpenAddTask {
-        return_to: usize,
-    },
+    OpenTaskList,
+    OpenAddTask,
     OpenEditTask {
-        return_to: usize,
         selected_task: Task,
     },
     CycleTaskStatus {
@@ -142,9 +137,7 @@ impl App {
                 match key_event.code {
                     KeyCode::Char('q') => self.handle_action(Action::Quit),
                     KeyCode::Char('t') if self.popups.is_empty() => {
-                        self.handle_action(Action::OpenTaskList {
-                            selected_task_idx: 0,
-                        })
+                        self.handle_action(Action::OpenTaskList {})
                     }
                     _ => {
                         if let Some(action) = {
@@ -180,21 +173,20 @@ impl App {
                     self.break_duration_minutes,
                 ));
             }
-            Action::OpenTaskList { selected_task_idx } => self
-                .popups
-                .push(Popup::TaskList(TaskListPopup::new(selected_task_idx))),
+            Action::OpenTaskList => self.popups.push(Popup::TaskList(TaskListPopup::new())),
 
-            Action::OpenAddTask { return_to } => self
-                .popups
-                .push(Popup::AddTask(AddTaskPopup::new(return_to))),
+            Action::OpenAddTask => self.popups.push(Popup::AddTask(AddTaskPopup::new())),
 
             Action::AddTask { task } => {
                 let add_result: Result<usize, SaveTaskError> = self.task_manager.add_task(task);
 
                 match add_result {
-                    Ok(idx) => self.handle_action(Action::OpenTaskList {
-                        selected_task_idx: (idx),
-                    }),
+                    Ok(idx) => {
+                        self.handle_action(ClosePopup);
+                        if let Some(Popup::TaskList(task_list_popup)) = self.popups.last_mut() {
+                            task_list_popup.select(idx);
+                        };
+                    }
                     Err(error) => self.handle_action(Action::ShowError(error.to_string())),
                 }
             }
@@ -202,22 +194,18 @@ impl App {
                 Ok(()) => {}
                 Err(error) => self.handle_action(Action::ShowError(error.to_string())),
             },
-            Action::OpenEditTask {
-                return_to,
-                selected_task,
-            } => self.popups.push(Popup::EditTask(EditTaskPopup::new(
-                return_to,
-                selected_task,
-            ))),
-            Action::EditTask { return_to, task } => {
+            Action::OpenEditTask { selected_task } => self
+                .popups
+                .push(Popup::EditTask(EditTaskPopup::new(selected_task))),
+            Action::EditTask { task } => {
                 let edit_result = self
                     .task_manager
                     .edit_task(task.uuid, task.title, task.status);
 
                 match edit_result {
-                    Ok(()) => self.handle_action(Action::OpenTaskList {
-                        selected_task_idx: (return_to),
-                    }),
+                    Ok(()) => {
+                        self.handle_action(Action::ClosePopup);
+                    }
                     Err(error) => self.handle_action(Action::ShowError(error.to_string())),
                 }
             }

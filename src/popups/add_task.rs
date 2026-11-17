@@ -9,7 +9,7 @@ use ratatui::{
 use uuid::Uuid;
 
 use crate::{
-    app::Action,
+    app::Action::{self, ClosePopup},
     task::{Task, TaskStatus},
     theme::Theme,
     utils::popup_area,
@@ -21,16 +21,14 @@ enum SelectedField {
 }
 
 pub struct AddTaskPopup {
-    task_opened_on_idx: usize,
     current_title: String,
     current_status: TaskStatus,
     selected_field: SelectedField,
 }
 
 impl AddTaskPopup {
-    pub fn new(task_opened_on_idx: usize) -> Self {
+    pub fn new() -> Self {
         AddTaskPopup {
-            task_opened_on_idx,
             current_title: String::from(""),
             current_status: TaskStatus::Todo,
             selected_field: SelectedField::Title,
@@ -40,9 +38,7 @@ impl AddTaskPopup {
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> Option<Action> {
         match key_event.code {
             // KeyCode::Esc => Some(Action::ClosePopup),
-            KeyCode::Esc => Some(Action::OpenTaskList {
-                selected_task_idx: self.task_opened_on_idx,
-            }),
+            KeyCode::Esc => Some(ClosePopup),
             KeyCode::Enter => {
                 if !self.current_title.trim().is_empty() {
                     Some(Action::AddTask {

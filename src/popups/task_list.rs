@@ -13,20 +13,22 @@ pub struct TaskListPopup {
 }
 
 impl TaskListPopup {
-    pub fn new(selected_task_idx: usize) -> Self {
+    pub fn new() -> Self {
         let mut list_state = ListState::default();
-        list_state.select(Some(selected_task_idx));
+        list_state.select(Some(0));
 
         TaskListPopup { list_state }
+    }
+
+    pub fn select(&mut self, idx: usize) {
+        self.list_state.select(Some(idx));
     }
 
     fn handle_key_event(&mut self, key_event: &KeyEvent, tasks: &[Task]) -> Option<Action> {
         match key_event.code {
             KeyCode::Char('t') | KeyCode::Esc => return Some(Action::ClosePopup),
             KeyCode::Char('a') => {
-                return Some(Action::OpenAddTask {
-                    return_to: (self.list_state.selected().unwrap_or(0)),
-                });
+                return Some(Action::OpenAddTask);
             }
 
             KeyCode::Char('d') => {
@@ -37,13 +39,8 @@ impl TaskListPopup {
                 }
             }
             KeyCode::Char('e') => {
-                if let Some((selected_task_idx, selected_task)) = self
-                    .list_state
-                    .selected()
-                    .and_then(|i| tasks.get(i).map(|task| (i, task)))
-                {
+                if let Some(selected_task) = self.list_state.selected().and_then(|i| tasks.get(i)) {
                     return Some(Action::OpenEditTask {
-                        return_to: selected_task_idx,
                         selected_task: selected_task.clone(),
                     });
                 }

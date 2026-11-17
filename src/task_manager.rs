@@ -126,6 +126,7 @@ impl TaskManager {
             edited_task.status = new_task_status;
 
             self.save_tasks(&new_tasks)?;
+            self.tasks = new_tasks;
 
             Ok(())
         } else {

@@ -21,7 +21,6 @@ enum SelectedField {
 }
 
 pub struct EditTaskPopup {
-    task_opened_on_idx: usize,
     task_opened_on_uuid: Uuid,
     current_title: String,
     current_status: TaskStatus,
@@ -29,9 +28,8 @@ pub struct EditTaskPopup {
 }
 
 impl EditTaskPopup {
-    pub fn new(task_opened_on_idx: usize, task: Task) -> Self {
+    pub fn new(task: Task) -> Self {
         EditTaskPopup {
-            task_opened_on_idx,
             task_opened_on_uuid: task.uuid,
             current_title: task.title,
             current_status: task.status,
@@ -42,13 +40,10 @@ impl EditTaskPopup {
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> Option<Action> {
         match key_event.code {
             // KeyCode::Esc => Some(Action::ClosePopup),
-            KeyCode::Esc => Some(Action::OpenTaskList {
-                selected_task_idx: self.task_opened_on_idx,
-            }),
+            KeyCode::Esc => Some(Action::ClosePopup),
             KeyCode::Enter => {
                 if !self.current_title.trim().is_empty() {
                     Some(Action::EditTask {
-                        return_to: self.task_opened_on_idx,
                         task: Task {
                             uuid: self.task_opened_on_uuid,
                             title: self.current_title.clone(),

@@ -96,7 +96,6 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         App {
-            // TODO: Handle errors
             task_manager: TaskManager::new("./tasks.json").unwrap(),
             current_screen: Box::new(WelcomeScreen::new()),
             popups: Vec::new(),
@@ -132,28 +131,23 @@ impl App {
     }
 
     fn handle_event(&mut self) -> io::Result<()> {
-        match event::read()? {
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                match key_event.code {
-                    KeyCode::Char('q') => self.handle_action(Action::Quit),
-                    KeyCode::Char('t') if self.popups.is_empty() => {
-                        self.handle_action(Action::OpenTaskList {})
-                    }
-                    _ => {
-                        if let Some(action) = {
-                            if let Some(current_popup) = self.popups.last_mut() {
-                                current_popup
-                                    .handle_event(&Event::Key(key_event), &self.task_manager.tasks)
-                            } else {
-                                self.current_screen.handle_event(&Event::Key(key_event))
-                            }
-                        } {
-                            self.handle_action(action);
-                        }
-                    }
-                }
-            }
-            _ => {}
+        let event = event::read()?;
+        let Event::Key(key) = event else {
+            return Ok(());
+        };
+        if key.kind != KeyEventKind::Press {
+            return Ok(());
+        }
+
+        let action = match (key.code, self.popups.last_mut()) {
+            (KeyCode::Char('q'), None) => Some(Action::Quit),
+            (KeyCode::Char('t'), None) => Some(Action::OpenTaskList),
+            (_, Some(popup)) => popup.handle_event(&event, &self.task_manager.tasks),
+            (_, None) => self.current_screen.handle_event(&event),
+        };
+
+        if let Some(action) = action {
+            self.handle_action(action);
         }
         Ok(())
     }

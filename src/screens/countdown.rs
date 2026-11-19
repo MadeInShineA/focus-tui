@@ -17,7 +17,6 @@ use tui_big_text::{BigText, PixelSize};
 pub struct CountdownScreen {
     start_time: Instant,
     total_duration: Duration,
-    is_paused: bool,
     remaining_time_when_paused: Option<Duration>,
     work_duration: Duration,
     break_duration: Duration,
@@ -29,7 +28,6 @@ impl CountdownScreen {
         CountdownScreen {
             start_time: Instant::now(),
             total_duration: Duration::from_mins(work_duration_minutes),
-            is_paused: false,
             remaining_time_when_paused: None,
             work_duration: Duration::from_mins(work_duration_minutes),
 
@@ -37,6 +35,10 @@ impl CountdownScreen {
 
             countdown_type: CountdownType::Work,
         }
+    }
+
+    fn is_paused(&self) -> bool {
+        self.remaining_time_when_paused.is_some()
     }
 
     fn remaining_duration(&self) -> Duration {
@@ -48,23 +50,42 @@ impl CountdownScreen {
         }
     }
 
+    // TODO Maybe define a function inside the CountdownType ?
+    fn end_countdown(&mut self) {
+        self.countdown_type = match self.countdown_type {
+            CountdownType::Work => CountdownType::Break,
+            CountdownType::Break => CountdownType::Work,
+        };
+        self.total_duration = match self.countdown_type {
+            CountdownType::Work => self.work_duration,
+            CountdownType::Break => self.break_duration,
+        };
+
+        self.start_time = Instant::now();
+        // Stay paused if we were paused, with the full duration of the new countdown
+        if self.is_paused() {
+            self.remaining_time_when_paused = Some(self.total_duration);
+        }
+    }
+
     fn handle_key_event(&mut self, key_event: &KeyEvent) {
         match key_event.code {
-            KeyCode::Char(' ') => {
-                if self.is_paused {
-                    if let Some(remaining_time) = self.remaining_time_when_paused {
-                        let elapsed_during_pause = self.total_duration - remaining_time;
-                        self.start_time = Instant::now() - elapsed_during_pause;
-                    }
-                    self.remaining_time_when_paused = None;
-                    self.is_paused = false;
-                } else {
+            KeyCode::Char(' ') => match self.remaining_time_when_paused.take() {
+                // Resume: shift start_time so the elapsed time matches what it was at pause
+                Some(remaining_time) => {
+                    let elapsed_before_pause = self.total_duration.saturating_sub(remaining_time);
+                    self.start_time = Instant::now() - elapsed_before_pause;
+                }
+                // Pause: freeze the remaining time
+                None => {
                     self.remaining_time_when_paused = Some(
                         self.total_duration
                             .saturating_sub(self.start_time.elapsed()),
                     );
-                    self.is_paused = true;
                 }
+            },
+            KeyCode::Char('s') => {
+                self.end_countdown();
             }
             _ => {}
         }
@@ -145,7 +166,7 @@ impl Screen for CountdownScreen {
         frame.render_widget(progress_gauge, top_layout[0]);
         frame.render_widget(countdown_big_text, top_layout[1]);
 
-        if self.is_paused {
+        if self.is_paused() {
             self.render_pause(frame, area, theme);
         }
     }
@@ -162,16 +183,8 @@ impl Screen for CountdownScreen {
     }
 
     fn update(&mut self) {
-        if !self.is_paused && self.remaining_duration().as_secs() == 0 {
-            self.countdown_type = match self.countdown_type {
-                CountdownType::Work => CountdownType::Break,
-                CountdownType::Break => CountdownType::Work,
-            };
-
-            self.total_duration = match self.countdown_type {
-                CountdownType::Work => self.work_duration,
-                CountdownType::Break => self.break_duration,
-            };
+        if !self.is_paused() && self.remaining_duration().as_secs() == 0 {
+            self.end_countdown();
 
             let notification = match self.countdown_type {
                 CountdownType::Work => Notification::new()
@@ -187,9 +200,6 @@ impl Screen for CountdownScreen {
             if let Err(e) = notification.show() {
                 eprintln!("Failed to show notification: {}", e);
             }
-
-            self.start_time = Instant::now();
-            self.remaining_time_when_paused = None;
         }
     }
 }

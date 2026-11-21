@@ -1,6 +1,6 @@
 use ratatui::style::{Color, Style};
 
-use crate::utils::CountdownType;
+use crate::screens::countdown::CountdownType;
 
 pub struct Theme {
     pub background_style: Style,

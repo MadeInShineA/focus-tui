@@ -8,6 +8,7 @@ use ratatui::{
 };
 use uuid::Uuid;
 
+use crate::screens::{countdown::CountdownScreen, welcome::WelcomeScreen};
 use crate::{
     app::Action::ClosePopup,
     popups::{
@@ -18,10 +19,9 @@ use crate::{
     task_manager::{SaveTaskError, TaskManager},
     theme::Theme,
 };
-use crate::{
-    screens::{countdown::CountdownScreen, welcome::WelcomeScreen},
-    utils::{DEFAULT_BREAK_DURATION_MINUTES, DEFAULT_WORK_DURATION_MINUTES},
-};
+
+const DEFAULT_WORK_DURATION_MINUTES: u64 = 45;
+const DEFAULT_BREAK_DURATION_MINUTES: u64 = 10;
 
 pub enum Action {
     Quit,
@@ -97,7 +97,10 @@ impl App {
     pub fn new() -> Self {
         App {
             task_manager: TaskManager::new("./tasks.json").unwrap(),
-            current_screen: Box::new(WelcomeScreen::new()),
+            current_screen: Box::new(WelcomeScreen::new(
+                DEFAULT_WORK_DURATION_MINUTES,
+                DEFAULT_BREAK_DURATION_MINUTES,
+            )),
             popups: Vec::new(),
             theme: Theme::catppuccin_mocha(),
             work_duration_minutes: DEFAULT_WORK_DURATION_MINUTES,

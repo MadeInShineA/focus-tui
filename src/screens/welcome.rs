@@ -9,7 +9,6 @@ use ratatui::{
 use crate::{
     app::{Action, Screen},
     theme::Theme,
-    utils::{DEFAULT_BREAK_DURATION_MINUTES, DEFAULT_WORK_DURATION_MINUTES},
 };
 
 enum SelectedDuration {
@@ -24,10 +23,10 @@ pub struct WelcomeScreen {
 }
 
 impl WelcomeScreen {
-    pub fn new() -> Self {
+    pub fn new(work_duration_minutes: u64, break_duration_minutes: u64) -> Self {
         WelcomeScreen {
-            work_duration_minutes: DEFAULT_WORK_DURATION_MINUTES,
-            break_duration_minutes: DEFAULT_BREAK_DURATION_MINUTES,
+            work_duration_minutes,
+            break_duration_minutes,
             selected_duration: SelectedDuration::Work,
         }
     }

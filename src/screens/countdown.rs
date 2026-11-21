@@ -1,8 +1,9 @@
+use std::ops::ControlFlow::Break;
 use std::time::{Duration, Instant};
 
 use crate::app::{Action, Screen};
 use crate::theme::Theme;
-use crate::utils::{CountdownType, popup_area};
+use crate::utils::popup_area;
 use notify_rust::Notification;
 use ratatui::widgets::Clear;
 use ratatui::{
@@ -13,6 +14,20 @@ use ratatui::{
     widgets::{Block, Gauge, Paragraph},
 };
 use tui_big_text::{BigText, PixelSize};
+
+pub enum CountdownType {
+    Work,
+    Break,
+}
+
+impl CountdownType {
+    fn next(&self) -> CountdownType {
+        match self {
+            CountdownType::Work => CountdownType::Break,
+            CountdownType::Break => CountdownType::Work,
+        }
+    }
+}
 
 pub struct CountdownScreen {
     start_time: Instant,
@@ -52,10 +67,7 @@ impl CountdownScreen {
 
     // TODO Maybe define a function inside the CountdownType ?
     fn end_countdown(&mut self) {
-        self.countdown_type = match self.countdown_type {
-            CountdownType::Work => CountdownType::Break,
-            CountdownType::Break => CountdownType::Work,
-        };
+        self.countdown_type = self.countdown_type.next();
         self.total_duration = match self.countdown_type {
             CountdownType::Work => self.work_duration,
             CountdownType::Break => self.break_duration,
